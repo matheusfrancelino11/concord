@@ -1,6 +1,8 @@
 import React from "react";
-import { useMessageStore } from "../../stores/messageStore";
+import { useMessageStore, TypingUser } from "../../stores/messageStore";
 import { useAuthStore } from "../../stores/authStore";
+
+const EMPTY_TYPING: TypingUser[] = [];
 
 interface TypingIndicatorProps {
   channelId: string;
@@ -8,7 +10,8 @@ interface TypingIndicatorProps {
 
 export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ channelId }) => {
   const { user } = useAuthStore();
-  const typingUsers = useMessageStore((state) => state.typingByChannel[channelId] || []);
+  const rawTyping = useMessageStore((state) => state.typingByChannel[channelId]);
+  const typingUsers = rawTyping ?? EMPTY_TYPING;
 
   // Filter out the current user so we don't say "You are typing..."
   const otherTyping = typingUsers.filter((u) => u.userId !== user?.id);

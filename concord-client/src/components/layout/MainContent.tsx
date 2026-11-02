@@ -14,7 +14,10 @@ interface MainContentProps {
 export const MainContent: React.FC<MainContentProps> = ({ onOpenCreateServer }) => {
   const { guilds, selectedGuildId, activeGuildId } = useGuildStore();
   const { channels, channelsByGuild, selectedChannelId, activeChannelId } = useChannelStore();
-  const { fetchMessages, sendMessage, sendTyping, clearUnread } = useMessageStore();
+  const fetchMessages = useMessageStore((s) => s.fetchMessages);
+  const sendMessage = useMessageStore((s) => s.sendMessage);
+  const sendTyping = useMessageStore((s) => s.sendTyping);
+  const clearUnread = useMessageStore((s) => s.clearUnread);
 
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentChannelId = selectedChannelId || activeChannelId;

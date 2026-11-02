@@ -19,7 +19,8 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   const { user } = useAuthStore();
   const { guilds, selectedGuildId, activeGuildId, deleteGuild } = useGuildStore();
   const { channels, channelsByGuild, selectedChannelId, activeChannelId, selectChannel, deleteChannel } = useChannelStore();
-  const { unreadByChannel, clearUnread } = useMessageStore();
+  const unreadByChannel = useMessageStore((s) => s.unreadByChannel);
+  const clearUnread = useMessageStore((s) => s.clearUnread);
 
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentChannelId = selectedChannelId || activeChannelId;

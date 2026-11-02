@@ -14,14 +14,12 @@ export const App: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading, checkAuth } = useAuthStore();
   const { guilds, selectedGuildId, activeGuildId, fetchGuilds, selectGuild } = useGuildStore();
   const { channels, channelsByGuild, selectedChannelId, activeChannelId, fetchChannels, selectChannel } = useChannelStore();
-  const {
-    handleMessageCreate,
-    handleMessageUpdate,
-    handleMessageDelete,
-    handleTypingStart,
-    cleanupExpiredTyping,
-    reset: resetMessageStore,
-  } = useMessageStore();
+  const handleMessageCreate = useMessageStore((s) => s.handleMessageCreate);
+  const handleMessageUpdate = useMessageStore((s) => s.handleMessageUpdate);
+  const handleMessageDelete = useMessageStore((s) => s.handleMessageDelete);
+  const handleTypingStart = useMessageStore((s) => s.handleTypingStart);
+  const cleanupExpiredTyping = useMessageStore((s) => s.cleanupExpiredTyping);
+  const resetMessageStore = useMessageStore((s) => s.reset);
 
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentChannelId = selectedChannelId || activeChannelId;

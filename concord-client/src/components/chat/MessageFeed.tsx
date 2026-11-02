@@ -2,8 +2,11 @@ import React, { useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { useMessageStore } from "../../stores/messageStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useGuildStore } from "../../stores/guildStore";
+import { Message } from "../../types";
 import { MessageItem } from "./MessageItem";
 import { Hash, Loader2 } from "lucide-react";
+
+const EMPTY_MESSAGES: Message[] = [];
 
 interface MessageFeedProps {
   channelId: string;
@@ -21,7 +24,8 @@ export const MessageFeed: React.FC<MessageFeedProps> = ({ channelId, channelName
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentGuild = guilds.find((g) => g.id === currentGuildId);
 
-  const messages = useMessageStore((state) => state.messagesByChannel[channelId] || []);
+  const rawMessages = useMessageStore((state) => state.messagesByChannel[channelId]);
+  const messages = rawMessages ?? EMPTY_MESSAGES;
   const isLoading = useMessageStore((state) => state.isLoadingByChannel[channelId] || false);
   const isLoadingOlder = useMessageStore((state) => state.isLoadingOlderByChannel[channelId] || false);
   const hasMore = useMessageStore((state) => state.hasMoreByChannel[channelId] ?? true);
