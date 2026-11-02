@@ -7,7 +7,8 @@
 param(
     [int]$Port = 8085,
     [switch]$SkipBackendTests = $false,
-    [switch]$SkipFrontendBuild = $false
+    [switch]$SkipFrontendBuild = $false,
+    [switch]$SimulateFailure = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -54,6 +55,68 @@ function Record-Test {
         Duration    = $timeStr
         Success     = $Success
     })
+}
+
+function Test-PortAvailability {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$TestPort
+    )
+
+    # 1. Query NetTCPIP for active listeners with owning process identification
+    try {
+        $connections = Get-NetTCPConnection -LocalPort $TestPort -State Listen -ErrorAction SilentlyContinue
+        if ($connections) {
+            $pids = @($connections | ForEach-Object { $_.OwningProcess }) | Select-Object -Unique
+            $procNames = @($pids | ForEach-Object {
+                $proc = Get-Process -Id $_ -ErrorAction SilentlyContinue
+                if ($proc) { "$($proc.ProcessName) (PID $_)" } else { "PID $_" }
+            }) -join ", "
+            return [PSCustomObject]@{
+                InUse   = $true
+                Details = "Port $TestPort is actively listened on by: $procNames"
+            }
+        }
+    } catch {
+        # Fall through to socket checks if Get-NetTCPConnection is restricted
+    }
+
+    # 2. Attempt exclusive bind on loopback interface (127.0.0.1)
+    try {
+        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $TestPort)
+        $listener.Server.ExclusiveAddressUse = $true
+        $listener.Start()
+        $listener.Stop()
+    } catch {
+        return [PSCustomObject]@{
+            InUse   = $true
+            Details = "Port $TestPort exclusive bind failed: $($_.Exception.Message)"
+        }
+    }
+
+    # 3. Connection probe to loopback to catch wildcard listeners (0.0.0.0 / [::])
+    try {
+        $tcpClient = [System.Net.Sockets.TcpClient]::new()
+        $connectTask = $tcpClient.ConnectAsync([System.Net.IPAddress]::Loopback, $TestPort)
+        $connected = $connectTask.Wait(200) -and $tcpClient.Connected
+        if ($connected) {
+            $tcpClient.Close()
+            $tcpClient.Dispose()
+            return [PSCustomObject]@{
+                InUse   = $true
+                Details = "Port $TestPort responded to incoming connection probe"
+            }
+        }
+        $tcpClient.Close()
+        $tcpClient.Dispose()
+    } catch {
+        # Port connection refused or timed out as expected for an unoccupied port
+    }
+
+    return [PSCustomObject]@{
+        InUse   = $false
+        Details = "Port $TestPort is free"
+    }
 }
 
 # ==============================================================================
@@ -111,46 +174,72 @@ try {
     Pop-Location
 }
 
-# Start server process with test PORT environment variable
-Write-Host "Launching server on port $Port (stdout -> $ServerLog, stderr -> $ServerErrLog)..." -ForegroundColor Gray
-$env:PORT = $Port.ToString()
-$serverProcess = Start-Process -FilePath $ServerExe -WorkingDirectory $ConcordDir -RedirectStandardOutput $ServerLog -RedirectStandardError $ServerErrLog -PassThru -NoNewWindow
+# Pre-flight TCP Port Check before launching server
+$swPort = [System.Diagnostics.Stopwatch]::StartNew()
+Write-Host "Performing pre-flight TCP port check on port $Port..." -ForegroundColor Gray
+$portStatus = Test-PortAvailability -TestPort $Port
+$swPort.Stop()
 
-# Poll /health until server responds or timeout (15 seconds)
-$serverReady = $false
-$pollStart = [System.Diagnostics.Stopwatch]::StartNew()
-while ($pollStart.ElapsedMilliseconds -lt 15000) {
-    if ($serverProcess.HasExited) {
-        break
-    }
-    try {
-        $hRes = Invoke-RestMethod -Uri "$BaseUrl/health" -Method Get -TimeoutSec 1 -UseBasicParsing
-        if ($hRes.status -eq "ok" -and $hRes.db -eq "healthy") {
-            $serverReady = $true
+if ($portStatus.InUse) {
+    Record-Test "Server Startup & Health Ping" $false "Pre-flight port collision detected: $($portStatus.Details)" $swPort.ElapsedMilliseconds
+    throw "Pre-flight check failed: Port $Port is already in use ($($portStatus.Details)). Terminate the conflicting listener or specify a different port with -Port <port>."
+}
+Write-Host "  Port $Port is free and available." -ForegroundColor Gray
+
+# Outer try block guarantees process teardown in Step 4 finally block
+try {
+    # Clean previous test server logs if present
+    Remove-Item -Path $ServerLog, $ServerErrLog -Force -ErrorAction SilentlyContinue
+
+    # Start server process with test PORT environment variable
+    Write-Host "Launching server on port $Port (stdout -> $ServerLog, stderr -> $ServerErrLog)..." -ForegroundColor Gray
+    $env:PORT = $Port.ToString()
+    $serverProcess = Start-Process -FilePath $ServerExe -WorkingDirectory $ConcordDir -RedirectStandardOutput $ServerLog -RedirectStandardError $ServerErrLog -PassThru -NoNewWindow
+
+    # Poll /health until server responds or timeout (15 seconds)
+    $serverReady = $false
+    $pollStart = [System.Diagnostics.Stopwatch]::StartNew()
+    while ($pollStart.ElapsedMilliseconds -lt 15000) {
+        if ($serverProcess.HasExited) {
             break
         }
-    } catch {
-        Start-Sleep -Milliseconds 250
+        try {
+            $hRes = Invoke-RestMethod -Uri "$BaseUrl/health" -Method Get -TimeoutSec 1 -UseBasicParsing
+            if ($hRes.status -eq "ok" -and $hRes.db -eq "healthy") {
+                # Brief pause to verify server did not terminate immediately after accept (bind race)
+                Start-Sleep -Milliseconds 100
+                if (-not $serverProcess.HasExited) {
+                    $serverReady = $true
+                    break
+                }
+            }
+        } catch {
+            Start-Sleep -Milliseconds 250
+        }
     }
-}
-$pollStart.Stop()
+    $pollStart.Stop()
 
-if (-not $serverReady) {
-    Record-Test "Server Startup & Health Ping" $false "Server did not become healthy within 15s" $pollStart.ElapsedMilliseconds
-    if ($serverProcess -and -not $serverProcess.HasExited) {
-        $serverProcess.Kill()
+    if (-not $serverReady) {
+        $detailMsg = "Server did not become healthy within 15s"
+        if ($serverProcess.HasExited) {
+            $detailMsg = "Server process terminated prematurely with exit code $($serverProcess.ExitCode)"
+        }
+        if (Test-Path $ServerErrLog) {
+            $errSnippet = (Get-Content $ServerErrLog -Tail 5 -ErrorAction SilentlyContinue) -join " "
+            if ($errSnippet) {
+                $detailMsg += " (stderr: $errSnippet)"
+            }
+        }
+        Record-Test "Server Startup & Health Ping" $false $detailMsg $pollStart.ElapsedMilliseconds
+        throw "Server startup timed out or failed. Check $ServerLog and $ServerErrLog for details."
     }
-    throw "Server startup timed out or failed. Check $ServerLog for details."
-}
 
-Record-Test "Server Startup & Health Ping" $true "Server listening on port $Port and reporting healthy" $pollStart.ElapsedMilliseconds
+    Record-Test "Server Startup & Health Ping" $true "Server listening on port $Port and reporting healthy" $pollStart.ElapsedMilliseconds
 
-# ==============================================================================
-# STEP 3: Execute Live HTTP Integration Checks using Invoke-RestMethod
-# ==============================================================================
-Log-Header "STEP 3: Live HTTP REST API Integration Verification"
-
-try {
+    # ==============================================================================
+    # STEP 3: Execute Live HTTP Integration Checks using Invoke-RestMethod
+    # ==============================================================================
+    Log-Header "STEP 3: Live HTTP REST API Integration Verification"
     $uniqueId = [System.IO.Path]::GetRandomFileName().Substring(0, 7)
     $aliceEmail = "alice_${uniqueId}@example.com"
     $aliceUsername = "alice_${uniqueId}"
@@ -284,9 +373,10 @@ try {
     try {
         $authHeaders = @{ Authorization = "Bearer $aliceToken" }
         $meRes = Invoke-RestMethod -Uri "$BaseUrl/v1/auth/me" -Method Get -Headers $authHeaders -UseBasicParsing
-        $meValid = ($meRes.user.email -eq $aliceEmail) -and ("$($meRes.user.id)" -eq $aliceUserId)
+        $meValid = if ($SimulateFailure) { $false } else { ($meRes.user.email -eq $aliceEmail) -and ("$($meRes.user.id)" -eq $aliceUserId) }
         $sw.Stop()
-        Record-Test "User Profile Authenticated (GET /v1/auth/me)" $meValid "200 OK, retrieved user profile ($aliceEmail)" $sw.ElapsedMilliseconds
+        $meMsg = if ($SimulateFailure) { "Simulated failure: User profile check failed" } else { "200 OK, retrieved user profile ($aliceEmail)" }
+        Record-Test "User Profile Authenticated (GET /v1/auth/me)" $meValid $meMsg $sw.ElapsedMilliseconds
     } catch {
         $sw.Stop()
         Record-Test "User Profile Authenticated (GET /v1/auth/me)" $false "Exception: $($_.Exception.Message)" $sw.ElapsedMilliseconds
@@ -519,7 +609,7 @@ try {
             $sw.Stop()
             Record-Test "Graceful Server Teardown" $false "Error stopping server: $($_.Exception.Message)" $sw.ElapsedMilliseconds
         }
-    } else {
+    } elseif ($serverProcess) {
         $sw.Stop()
         Record-Test "Graceful Server Teardown" $true "Server process already exited" $sw.ElapsedMilliseconds
     }
@@ -561,8 +651,8 @@ if (-not $SkipFrontendBuild) {
 $GlobalStartTime.Stop()
 Log-Header "STEP 6: Automated Verification Results Summary"
 
-$passedCount = ($Results | Where-Object { $_.Success -eq $true }).Count
-$failedCount = ($Results | Where-Object { $_.Success -eq $false }).Count
+$passedCount = @($Results | Where-Object { $_.Success -eq $true }).Count
+$failedCount = @($Results | Where-Object { $_.Success -eq $false }).Count
 $totalCount = $Results.Count
 
 Write-Host ""
@@ -574,7 +664,7 @@ Write-Host "TOTAL TESTS: $totalCount | PASSED: $passedCount | FAILED: $failedCou
 Write-Host ("-" * 80) -ForegroundColor Gray
 Write-Host ""
 
-if ($failedCount -gt 0) {
+if ($failedCount -gt 0 -or @($Results | Where-Object { -not $_.Success }).Count -gt 0) {
     Write-Host "[FAIL] Verification suite encountered $failedCount failures." -ForegroundColor Red
     exit 1
 } else {
