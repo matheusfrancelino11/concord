@@ -37,7 +37,7 @@ func Load() *Config {
 	jwtExpiryHours := getEnvInt("JWT_EXPIRY_HOURS", 1)
 	jwtRefreshDays := getEnvInt("JWT_REFRESH_EXPIRY_DAYS", 30)
 
-	corsStr := getEnv("CORS_ORIGINS", "tauri://localhost,http://localhost:5173,http://127.0.0.1:5173,http://tauri.localhost")
+	corsStr := getEnv("CORS_ORIGINS", "tauri://localhost,http://tauri.localhost,https://tauri.localhost,http://localhost:1420,http://127.0.0.1:1420,http://localhost:5173,http://127.0.0.1:5173")
 	var origins []string
 	for _, o := range strings.Split(corsStr, ",") {
 		o = strings.TrimSpace(o)
