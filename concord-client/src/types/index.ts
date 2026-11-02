@@ -151,3 +151,118 @@ export interface ApiErrorResponse {
   error: string;
   code: string;
 }
+
+// ==========================================
+// Gateway Opcodes & Events
+// ==========================================
+
+export enum GatewayOpcode {
+  DISPATCH = 0,          // Server -> Client: Event dispatch
+  HEARTBEAT = 1,         // Client <-> Server: Ping/Pong keepalive
+  IDENTIFY = 2,          // Client -> Server: Handshake with JWT token
+  PRESENCE_UPDATE = 3,   // Client -> Server: Presence status update
+  VOICE_STATE_UPDATE = 4,// Client -> Server: Voice channel connection
+  RESUME = 6,            // Client -> Server: Session resume
+  RECONNECT = 7,         // Server -> Client: Server requests reconnect
+  INVALID_SESSION = 9,   // Server -> Client: Re-identify required
+  HELLO = 10,            // Server -> Client: Initial greeting with interval
+  HEARTBEAT_ACK = 11,    // Server -> Client: Heartbeat acknowledgment
+}
+
+export const GatewayEvent = {
+  READY: "READY",
+  GUILD_CREATE: "GUILD_CREATE",
+  GUILD_UPDATE: "GUILD_UPDATE",
+  GUILD_DELETE: "GUILD_DELETE",
+  CHANNEL_CREATE: "CHANNEL_CREATE",
+  CHANNEL_UPDATE: "CHANNEL_UPDATE",
+  CHANNEL_DELETE: "CHANNEL_DELETE",
+  MESSAGE_CREATE: "MESSAGE_CREATE",
+  MESSAGE_UPDATE: "MESSAGE_UPDATE",
+  MESSAGE_DELETE: "MESSAGE_DELETE",
+  TYPING_START: "TYPING_START",
+  RESUMED: "RESUMED",
+} as const;
+
+export type GatewayEventType = (typeof GatewayEvent)[keyof typeof GatewayEvent];
+
+export interface GatewayPayload<T = unknown> {
+  op: GatewayOpcode;
+  d: T;
+  s?: number | null;
+  t?: GatewayEventType | string | null;
+}
+
+export type GatewayMessage<T = unknown> = GatewayPayload<T>;
+
+export interface IdentifyPayload {
+  token: string;
+  properties?: {
+    os?: string;
+    browser?: string;
+    device?: string;
+  };
+}
+
+export interface ResumePayload {
+  token: string;
+  session_id: string;
+  seq: number;
+}
+
+export interface HelloPayload {
+  heartbeat_interval: number;
+}
+
+export interface ReadyPayload {
+  v: number;
+  user: User;
+  session_id: string;
+  guilds: Array<{ id: string; unavailable: boolean }>;
+}
+
+// ==========================================
+// Message Models
+// ==========================================
+
+export type Author = UserSummary;
+
+export interface Message {
+  id: Snowflake;
+  channel_id: Snowflake;
+  guild_id?: Snowflake;
+  author: UserSummary;
+  author_id?: Snowflake;
+  content: string;
+  type: number;
+  edited_at: string | null;
+  pinned: boolean;
+  reply_to_id?: Snowflake | null;
+  created_at: string;
+}
+
+export interface CreateMessagePayload {
+  content: string;
+  reply_to_id?: Snowflake | null;
+}
+
+export interface UpdateMessagePayload {
+  content: string;
+}
+
+export interface MessageDeletePayload {
+  id: Snowflake;
+  channel_id: Snowflake;
+  guild_id?: Snowflake;
+}
+
+export interface TypingStartPayload {
+  channel_id: Snowflake;
+  guild_id?: Snowflake;
+  user_id: Snowflake;
+  username?: string;
+  timestamp?: number;
+}
+
+export type TypingPayload = TypingStartPayload;
+

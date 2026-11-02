@@ -11,6 +11,7 @@ import {
   TokenResponse,
   User,
   ApiErrorResponse,
+  Message,
 } from "../types";
 
 // Base URL configuration with Vite env fallback
@@ -320,6 +321,54 @@ export const api = {
 
     delete: async (channelId: string): Promise<void> => {
       return request<void>(`/channels/${channelId}`, {
+        method: "DELETE",
+      });
+    },
+
+    typing: async (channelId: string): Promise<void> => {
+      return request<void>(`/channels/${channelId}/typing`, {
+        method: "POST",
+      });
+    },
+  },
+
+  messages: {
+    list: async (channelId: string, before?: string, limit: number = 50): Promise<Message[]> => {
+      let query = `?limit=${limit}`;
+      if (before) {
+        query += `&before=${encodeURIComponent(before)}`;
+      }
+      return request<Message[]>(`/channels/${channelId}/messages${query}`, {
+        method: "GET",
+      });
+    },
+
+    create: async (channelId: string, content: string, replyToId?: string): Promise<Message> => {
+      return request<Message>(`/channels/${channelId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({
+          content,
+          ...(replyToId ? { reply_to_id: replyToId } : {}),
+        }),
+      });
+    },
+
+    edit: async (channelId: string, messageId: string, content: string): Promise<Message> => {
+      return request<Message>(`/channels/${channelId}/messages/${messageId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ content }),
+      });
+    },
+
+    update: async (channelId: string, messageId: string, content: string): Promise<Message> => {
+      return request<Message>(`/channels/${channelId}/messages/${messageId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ content }),
+      });
+    },
+
+    delete: async (channelId: string, messageId: string): Promise<void> => {
+      return request<void>(`/channels/${channelId}/messages/${messageId}`, {
         method: "DELETE",
       });
     },

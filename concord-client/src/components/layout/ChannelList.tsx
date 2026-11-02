@@ -2,6 +2,7 @@ import React from "react";
 import { useGuildStore } from "../../stores/guildStore";
 import { useChannelStore } from "../../stores/channelStore";
 import { useAuthStore } from "../../stores/authStore";
+import { useMessageStore } from "../../stores/messageStore";
 import { Hash, Volume2, Plus, ChevronDown, Trash2 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { UserFooter } from "./UserFooter";
@@ -18,6 +19,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   const { user } = useAuthStore();
   const { guilds, selectedGuildId, activeGuildId, deleteGuild } = useGuildStore();
   const { channels, channelsByGuild, selectedChannelId, activeChannelId, selectChannel, deleteChannel } = useChannelStore();
+  const { unreadByChannel, clearUnread } = useMessageStore();
 
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentChannelId = selectedChannelId || activeChannelId;
@@ -138,33 +140,62 @@ export const ChannelList: React.FC<ChannelListProps> = ({
               <div className="space-y-0.5">
                 {textChannels.map((channel) => {
                   const isActive = channel.id === currentChannelId;
+                  const unreadCount = unreadByChannel[channel.id] || 0;
+                  const hasUnread = unreadCount > 0 && !isActive;
+
                   return (
                     <div
                       key={channel.id}
-                      onClick={() => selectChannel(channel.id)}
-                      className={`group flex items-center justify-between px-2 py-1.5 rounded-[4px] cursor-pointer transition-colors ${
+                      onClick={() => {
+                        selectChannel(channel.id);
+                        clearUnread(channel.id);
+                      }}
+                      className={`relative group flex items-center justify-between px-2 py-1.5 rounded-[4px] cursor-pointer transition-colors ${
                         isActive
                           ? "bg-[#404249] text-white font-medium"
+                          : hasUnread
+                          ? "text-white font-semibold hover:bg-[#35373c]"
                           : "text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]"
                       }`}
                     >
+                      {/* Unread indicator pill on left */}
+                      {hasUnread && (
+                        <div className="w-1 h-2 bg-white rounded-r absolute -left-2" />
+                      )}
+
                       <div className="flex items-center min-w-0">
-                        <Hash className="w-5 h-5 mr-1.5 shrink-0 text-[#80848e] group-hover:text-[#dbdee1]" />
+                        <Hash
+                          className={`w-5 h-5 mr-1.5 shrink-0 ${
+                            isActive || hasUnread
+                              ? "text-white"
+                              : "text-[#80848e] group-hover:text-[#dbdee1]"
+                          }`}
+                        />
                         <span className="truncate text-sm">{channel.name}</span>
                       </div>
-                      {isOwner && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteChannel(channel.id, channel.name);
-                          }}
-                          aria-label={`Delete ${channel.name}`}
-                          className="opacity-0 group-hover:opacity-100 p-1 hover:text-[#f23f43] text-[#949ba4] transition cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Unread Count Badge */}
+                        {hasUnread && (
+                          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#f23f43] text-white">
+                            {unreadCount}
+                          </span>
+                        )}
+
+                        {isOwner && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteChannel(channel.id, channel.name);
+                            }}
+                            aria-label={`Delete ${channel.name}`}
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:text-[#f23f43] text-[#949ba4] transition cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

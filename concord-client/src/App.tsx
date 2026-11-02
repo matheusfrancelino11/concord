@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useAuthStore } from "./stores/authStore";
 import { useGuildStore } from "./stores/guildStore";
 import { useChannelStore } from "./stores/channelStore";
+import { useMessageStore } from "./stores/messageStore";
+import { gateway } from "./gateway/GatewayClient";
+import { GatewayEvent, Message } from "./types";
 import { LoginView } from "./components/auth/LoginView";
 import { RegisterView } from "./components/auth/RegisterView";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -11,9 +14,22 @@ export const App: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading, checkAuth } = useAuthStore();
   const { guilds, selectedGuildId, activeGuildId, fetchGuilds, selectGuild } = useGuildStore();
   const { channels, channelsByGuild, selectedChannelId, activeChannelId, fetchChannels, selectChannel } = useChannelStore();
+  const {
+    handleMessageCreate,
+    handleMessageUpdate,
+    handleMessageDelete,
+    handleTypingStart,
+    cleanupExpiredTyping,
+    reset: resetMessageStore,
+  } = useMessageStore();
 
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentChannelId = selectedChannelId || activeChannelId;
+  const currentChannelIdRef = useRef(currentChannelId);
+
+  useEffect(() => {
+    currentChannelIdRef.current = currentChannelId;
+  }, [currentChannelId]);
 
   const [authView, setAuthView] = useState<"login" | "register">("login");
 
@@ -22,28 +38,94 @@ export const App: React.FC = () => {
     checkAuth();
   }, [checkAuth]);
 
-  // 2. On authenticated, fetch guilds
+  // 2. Gateway Connection & Event Dispatchers
+  useEffect(() => {
+    if (!isAuthenticated) {
+      gateway.disconnect();
+      resetMessageStore();
+      return;
+    }
+
+    // Connect to WebSocket gateway
+    gateway.connect();
+
+    // Event Listeners
+    const unsubMessageCreate = gateway.on<Message>(
+      GatewayEvent.MESSAGE_CREATE,
+      (msg) => {
+        handleMessageCreate(msg, currentChannelIdRef.current);
+      }
+    );
+
+    const unsubMessageUpdate = gateway.on<Message>(
+      GatewayEvent.MESSAGE_UPDATE,
+      (msg) => {
+        handleMessageUpdate(msg);
+      }
+    );
+
+    const unsubMessageDelete = gateway.on<{ id: string; channel_id: string; guild_id?: string }>(
+      GatewayEvent.MESSAGE_DELETE,
+      (payload) => {
+        handleMessageDelete(payload);
+      }
+    );
+
+    const unsubTypingStart = gateway.on<{
+      channel_id: string;
+      guild_id?: string;
+      user_id: string;
+      username?: string;
+      timestamp?: number;
+    }>(GatewayEvent.TYPING_START, (payload) => {
+      handleTypingStart(payload);
+    });
+
+    // Sweeper for expired typing states (every 1s)
+    const typingTimer = setInterval(() => {
+      cleanupExpiredTyping();
+    }, 1000);
+
+    return () => {
+      unsubMessageCreate();
+      unsubMessageUpdate();
+      unsubMessageDelete();
+      unsubTypingStart();
+      clearInterval(typingTimer);
+      gateway.disconnect();
+    };
+  }, [
+    isAuthenticated,
+    handleMessageCreate,
+    handleMessageUpdate,
+    handleMessageDelete,
+    handleTypingStart,
+    cleanupExpiredTyping,
+    resetMessageStore,
+  ]);
+
+  // 3. On authenticated, fetch guilds
   useEffect(() => {
     if (isAuthenticated) {
       fetchGuilds();
     }
   }, [isAuthenticated, fetchGuilds]);
 
-  // 3. Auto-select first guild if none selected
+  // 4. Auto-select first guild if none selected
   useEffect(() => {
     if (isAuthenticated && guilds.length > 0 && !currentGuildId) {
       selectGuild(guilds[0].id);
     }
   }, [isAuthenticated, guilds, currentGuildId, selectGuild]);
 
-  // 4. Fetch channels when selected guild changes
+  // 5. Fetch channels when selected guild changes
   useEffect(() => {
     if (isAuthenticated && currentGuildId) {
       fetchChannels(currentGuildId);
     }
   }, [isAuthenticated, currentGuildId, fetchChannels]);
 
-  // 5. Auto-select default #geral or first text channel
+  // 6. Auto-select default #geral or first text channel
   useEffect(() => {
     if (isAuthenticated && currentGuildId) {
       const guildChannels = channelsByGuild[currentGuildId] || channels || [];

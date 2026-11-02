@@ -1,7 +1,11 @@
-import React from "react";
+import React, { useEffect, useCallback } from "react";
 import { useGuildStore } from "../../stores/guildStore";
 import { useChannelStore } from "../../stores/channelStore";
-import { Hash, Volume2, Bell, Pin, Users, PlusCircle, Gift, Image, Smile } from "lucide-react";
+import { useMessageStore } from "../../stores/messageStore";
+import { MessageFeed } from "../chat/MessageFeed";
+import { MessageInput } from "../chat/MessageInput";
+import { TypingIndicator } from "../chat/TypingIndicator";
+import { Hash, Volume2, Bell, Pin, Users } from "lucide-react";
 
 interface MainContentProps {
   onOpenCreateServer: () => void;
@@ -10,6 +14,7 @@ interface MainContentProps {
 export const MainContent: React.FC<MainContentProps> = ({ onOpenCreateServer }) => {
   const { guilds, selectedGuildId, activeGuildId } = useGuildStore();
   const { channels, channelsByGuild, selectedChannelId, activeChannelId } = useChannelStore();
+  const { fetchMessages, sendMessage, sendTyping, clearUnread } = useMessageStore();
 
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentChannelId = selectedChannelId || activeChannelId;
@@ -20,6 +25,27 @@ export const MainContent: React.FC<MainContentProps> = ({ onOpenCreateServer }) 
     : [];
   const currentChannel =
     guildChannels.find((c) => c.id === currentChannelId) || guildChannels[0];
+
+  // Fetch messages and clear unread whenever channel changes
+  useEffect(() => {
+    if (currentChannel && currentChannel.type === 0) {
+      fetchMessages(currentChannel.id);
+      clearUnread(currentChannel.id);
+    }
+  }, [currentChannel?.id, currentChannel?.type, fetchMessages, clearUnread]);
+
+  const handleSendMessage = useCallback(
+    async (content: string) => {
+      if (!currentChannel) return;
+      await sendMessage(currentChannel.id, content);
+    },
+    [currentChannel, sendMessage]
+  );
+
+  const handleTyping = useCallback(() => {
+    if (!currentChannel) return;
+    sendTyping(currentChannel.id);
+  }, [currentChannel, sendTyping]);
 
   if (!currentGuild) {
     return (
@@ -73,50 +99,41 @@ export const MainContent: React.FC<MainContentProps> = ({ onOpenCreateServer }) 
         </div>
       </header>
 
-      {/* 2. Welcome & Chat Feed Placeholder */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-end space-y-4">
-        <div className="mb-4">
-          <div className="w-16 h-16 rounded-full bg-[#404249] flex items-center justify-center text-white mb-2">
-            {isVoice ? <Volume2 className="w-10 h-10" /> : <Hash className="w-10 h-10" />}
-          </div>
-          <h2 className="text-3xl font-bold text-[#f2f3f5]">
-            Welcome to #{currentChannel?.name || "geral"}!
-          </h2>
-          <p className="text-sm text-[#949ba4] mt-1">
-            This is the start of the #{currentChannel?.name || "geral"} channel.
-          </p>
-
-          {isVoice ? (
+      {/* 2. Channel Body */}
+      {isVoice ? (
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-end space-y-4">
+          <div className="mb-4">
+            <div className="w-16 h-16 rounded-full bg-[#404249] flex items-center justify-center text-white mb-2">
+              <Volume2 className="w-10 h-10" />
+            </div>
+            <h2 className="text-3xl font-bold text-[#f2f3f5]">
+              Welcome to #{currentChannel?.name || "voice"}!
+            </h2>
             <div className="mt-4 p-4 rounded-md bg-[#2b2d31] border border-[#383a40] text-xs text-[#dbdee1] max-w-lg">
               <span className="font-semibold text-white">🔊 Voice Channel Ready:</span> WebRTC Voice
               audio and screen sharing will be connected via LiveKit SFU in Milestone 4.
             </div>
-          ) : (
-            <div className="mt-4 p-4 rounded-md bg-[#2b2d31] border border-[#383a40] text-xs text-[#dbdee1] max-w-lg">
-              <span className="font-semibold text-white">💬 Milestone 1 Ready:</span> Server and
-              channel navigation operational. Real-time chat messages will arrive in Milestone 2.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 3. Message Input Placeholder */}
-      <div className="px-4 pb-6 pt-2">
-        <div className="bg-[#383a40] rounded-lg px-4 py-3 flex items-center justify-between text-[#949ba4] cursor-not-allowed">
-          <div className="flex items-center gap-3">
-            <PlusCircle className="w-5 h-5 opacity-40" />
-            <span className="text-sm opacity-60">
-              Message #{currentChannel?.name || "geral"} (Messaging unlocked in Milestone 2)
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 opacity-40">
-            <Gift className="w-5 h-5" />
-            <Image className="w-5 h-5" />
-            <Smile className="w-5 h-5" />
           </div>
         </div>
-      </div>
+      ) : currentChannel ? (
+        <>
+          <MessageFeed
+            channelId={currentChannel.id}
+            channelName={currentChannel.name}
+          />
+          <TypingIndicator channelId={currentChannel.id} />
+          <MessageInput
+            channelId={currentChannel.id}
+            channelName={currentChannel.name}
+            onSendMessage={handleSendMessage}
+            onTyping={handleTyping}
+          />
+        </>
+      ) : (
+        <div className="flex-1 flex items-center justify-center text-[#949ba4]">
+          <p>No channel selected.</p>
+        </div>
+      )}
     </main>
   );
 };
