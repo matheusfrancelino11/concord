@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 CREATE INDEX IF NOT EXISTS messages_channel_created ON messages(channel_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS messages_channel_id_idx ON messages(channel_id, id DESC);
 
 -- 5. MEMBERS
 CREATE TABLE IF NOT EXISTS members (

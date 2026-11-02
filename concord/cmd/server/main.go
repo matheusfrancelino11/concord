@@ -13,6 +13,7 @@ import (
 	"concord/internal/api"
 	"concord/internal/config"
 	"concord/internal/database"
+	"concord/internal/gateway"
 	"concord/internal/middleware"
 	"concord/internal/service"
 	"concord/internal/snowflake"
@@ -45,15 +46,21 @@ func main() {
 	}
 	_ = snowflake.InitDefault(cfg.WorkerID, cfg.ProcessID)
 
+	hubManager := gateway.NewHubManager()
+	sessionStore := gateway.NewSessionStore()
+
 	authService := service.NewAuthService(pool, sf, cfg.JWTSecret)
 	guildService := service.NewGuildService(pool, sf)
 	channelService := service.NewChannelService(pool, sf)
+	messageService := service.NewMessageService(pool, sf, hubManager)
 
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
 	authHandler := api.NewAuthHandler(authService)
 	guildHandler := api.NewGuildHandler(guildService, channelService)
 	channelHandler := api.NewChannelHandler(channelService)
+	messageHandler := api.NewMessageHandler(messageService)
+	gatewayHandler := gateway.NewHandler(hubManager, sessionStore, authService, guildService)
 
 	router := api.NewRouter(&api.RouterDeps{
 		Config:         cfg,
@@ -61,15 +68,16 @@ func main() {
 		AuthHandler:    authHandler,
 		GuildHandler:   guildHandler,
 		ChannelHandler: channelHandler,
+		MessageHandler: messageHandler,
+		GatewayHandler: gatewayHandler,
 		AuthMiddleware: authMiddleware,
 	})
 
 	server := &http.Server{
-		Addr:         ":" + cfg.Port,
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:              ":" + cfg.Port,
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	shutdownSignal := make(chan os.Signal, 1)
@@ -90,6 +98,9 @@ func main() {
 		log.Printf("[concord] Shutdown signal received: %v. Initiating graceful shutdown...", sig)
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer shutdownCancel()
+
+		// Close all gateway hubs and notify connected clients
+		hubManager.CloseAll(1001, "Server shutting down")
 
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			log.Printf("[concord] Error during server shutdown: %v", err)

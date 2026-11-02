@@ -12,9 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"concord/internal/api"
 	"concord/internal/config"
 	"concord/internal/database"
+	"concord/internal/gateway"
 	"concord/internal/middleware"
 	"concord/internal/models"
 	"concord/internal/service"
@@ -22,10 +25,16 @@ import (
 )
 
 type testHarness struct {
-	server  *httptest.Server
-	client  *http.Client
-	baseURL string
-	cfg     *config.Config
+	server       *httptest.Server
+	client       *http.Client
+	baseURL      string
+	wsURL        string
+	cfg          *config.Config
+	pool         *pgxpool.Pool
+	hubManager   *gateway.HubManager
+	sessionStore *gateway.SessionStore
+	authService  service.AuthService
+	guildService service.GuildService
 }
 
 func setupTestHarness(t *testing.T) *testHarness {
@@ -48,10 +57,17 @@ func setupTestHarness(t *testing.T) *testHarness {
 		t.Fatalf("setupTestHarness: failed to initialize snowflake: %v", err)
 	}
 
+	hubManager := gateway.NewHubManager()
+	sessionStore := gateway.NewSessionStore()
+
 	authService := service.NewAuthService(pool, sf, cfg.JWTSecret)
 	guildService := service.NewGuildService(pool, sf)
 	channelService := service.NewChannelService(pool, sf)
+	messageService := service.NewMessageService(pool, sf, hubManager)
 	authMiddleware := middleware.NewAuthMiddleware(authService)
+
+	gatewayHandler := gateway.NewHandler(hubManager, sessionStore, authService, guildService)
+	messageHandler := api.NewMessageHandler(messageService)
 
 	router := api.NewRouter(&api.RouterDeps{
 		Config:         cfg,
@@ -59,6 +75,8 @@ func setupTestHarness(t *testing.T) *testHarness {
 		AuthHandler:    api.NewAuthHandler(authService),
 		GuildHandler:   api.NewGuildHandler(guildService, channelService),
 		ChannelHandler: api.NewChannelHandler(channelService),
+		MessageHandler: messageHandler,
+		GatewayHandler: gatewayHandler,
 		AuthMiddleware: authMiddleware,
 	})
 
@@ -69,11 +87,19 @@ func setupTestHarness(t *testing.T) *testHarness {
 		pool.Close()
 	})
 
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+
 	return &testHarness{
-		server:  server,
-		client:  server.Client(),
-		baseURL: server.URL,
-		cfg:     cfg,
+		server:       server,
+		client:       server.Client(),
+		baseURL:      server.URL,
+		wsURL:        wsURL,
+		cfg:          cfg,
+		pool:         pool,
+		hubManager:   hubManager,
+		sessionStore: sessionStore,
+		authService:  authService,
+		guildService: guildService,
 	}
 }
 

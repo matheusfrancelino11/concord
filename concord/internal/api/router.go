@@ -21,6 +21,8 @@ type RouterDeps struct {
 	AuthHandler    *AuthHandler
 	GuildHandler   *GuildHandler
 	ChannelHandler *ChannelHandler
+	MessageHandler *MessageHandler
+	GatewayHandler http.Handler
 	AuthMiddleware *middleware.AuthMiddleware
 }
 
@@ -28,13 +30,18 @@ type RouterDeps struct {
 func NewRouter(deps *RouterDeps) http.Handler {
 	r := chi.NewRouter()
 
-	// Global standard middlewares
+	// Global standard middlewares (without Request Timeout so WebSockets are not aborted)
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
-	r.Use(chimiddleware.Timeout(30 * time.Second))
 	r.Use(middleware.NewCORS(deps.Config.CORSOrigins))
+
+	// Mount WebSocket Gateway endpoints directly on root router (outside Timeout middleware)
+	if deps.GatewayHandler != nil {
+		r.Get("/gateway", deps.GatewayHandler.ServeHTTP)
+		r.Get("/v1/gateway", deps.GatewayHandler.ServeHTTP)
+	}
 
 	// Health check handler
 	healthHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -57,10 +64,6 @@ func NewRouter(deps *RouterDeps) http.Handler {
 			"env":    deps.Config.Env,
 		})
 	}
-
-	// Mount health endpoints
-	r.Get("/health", healthHandler)
-	r.Get("/v1/health", healthHandler)
 
 	// API Route registry function supporting both root and /v1 prefix
 	registerAPIRoutes := func(api chi.Router) {
@@ -88,11 +91,30 @@ func NewRouter(deps *RouterDeps) http.Handler {
 
 			// Direct channel routes
 			pr.Delete("/channels/{id}", deps.ChannelHandler.DeleteChannel)
+
+			// Milestone 2 Message routes
+			if deps.MessageHandler != nil {
+				pr.Get("/channels/{id}/messages", deps.MessageHandler.ListMessages)
+				pr.Post("/channels/{id}/messages", deps.MessageHandler.CreateMessage)
+				pr.Patch("/channels/{id}/messages/{mid}", deps.MessageHandler.UpdateMessage)
+				pr.Delete("/channels/{id}/messages/{mid}", deps.MessageHandler.DeleteMessage)
+				pr.Post("/channels/{id}/typing", deps.MessageHandler.TriggerTyping)
+			}
 		})
 	}
 
-	r.Group(registerAPIRoutes)
-	r.Route("/v1", registerAPIRoutes)
+	// HTTP routes wrapped with 30-second request timeout
+	r.Group(func(httpRouter chi.Router) {
+		httpRouter.Use(chimiddleware.Timeout(30 * time.Second))
+
+		// Health endpoints
+		httpRouter.Get("/health", healthHandler)
+		httpRouter.Get("/v1/health", healthHandler)
+
+		// Mount API routes at root and /v1
+		httpRouter.Group(registerAPIRoutes)
+		httpRouter.Route("/v1", registerAPIRoutes)
+	})
 
 	return r
 }
