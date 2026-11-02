@@ -54,13 +54,18 @@ func (m *HubManager) GetHub(guildID string) (*Hub, bool) {
 
 // BroadcastToGuild delivers an event to all connected members of the specified guild
 func (m *HubManager) BroadcastToGuild(guildID snowflake.ID, eventType string, payload any) {
+	m.BroadcastToGuildExcept(guildID, eventType, payload, "")
+}
+
+// BroadcastToGuildExcept delivers an event to connected members of the guild excluding a specific session
+func (m *HubManager) BroadcastToGuildExcept(guildID snowflake.ID, eventType string, payload any, exceptSessionID string) {
 	guildIDStr := guildID.String()
 	m.mu.RLock()
 	hub, exists := m.hubs[guildIDStr]
 	m.mu.RUnlock()
 
 	if exists {
-		hub.Broadcast(eventType, payload)
+		hub.BroadcastExcept(eventType, payload, exceptSessionID)
 	}
 }
 

@@ -12,6 +12,10 @@ import {
   User,
   ApiErrorResponse,
   Message,
+  Member,
+  Invite,
+  InviteResponse,
+  CreateInvitePayload,
 } from "../types";
 
 // Base URL configuration with Vite env fallback
@@ -370,6 +374,35 @@ export const api = {
     delete: async (channelId: string, messageId: string): Promise<void> => {
       return request<void>(`/channels/${channelId}/messages/${messageId}`, {
         method: "DELETE",
+      });
+    },
+  },
+
+  invites: {
+    create: async (guildId: string, payload?: CreateInvitePayload): Promise<Invite> => {
+      return request<Invite>(`/guilds/${guildId}/invites`, {
+        method: "POST",
+        body: JSON.stringify(payload || {}),
+      });
+    },
+
+    get: async (code: string): Promise<InviteResponse> => {
+      return request<InviteResponse>(`/invites/${code}`, {
+        method: "GET",
+      });
+    },
+
+    use: async (code: string): Promise<GuildDetail> => {
+      return request<GuildDetail>(`/invites/${code}/use`, {
+        method: "POST",
+      });
+    },
+  },
+
+  members: {
+    list: async (guildId: string): Promise<Member[]> => {
+      return request<Member[]>(`/guilds/${guildId}/members`, {
+        method: "GET",
       });
     },
   },

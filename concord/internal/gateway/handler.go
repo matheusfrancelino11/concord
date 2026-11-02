@@ -11,30 +11,37 @@ import (
 
 	"nhooyr.io/websocket"
 
+	"concord/internal/models"
 	"concord/internal/service"
 	"concord/internal/snowflake"
 )
 
 // Handler serves HTTP WebSocket gateway requests
 type Handler struct {
-	hubManager   *HubManager
-	sessionStore *SessionStore
-	authService  service.AuthService
-	guildService service.GuildService
+	hubManager      *HubManager
+	sessionStore    *SessionStore
+	presenceTracker *PresenceTracker
+	authService     service.AuthService
+	guildService    service.GuildService
+	voiceService    service.VoiceService
 }
 
 // NewHandler constructs a new Gateway HTTP handler
 func NewHandler(
 	hubManager *HubManager,
 	sessionStore *SessionStore,
+	presenceTracker *PresenceTracker,
 	authService service.AuthService,
 	guildService service.GuildService,
+	voiceService service.VoiceService,
 ) *Handler {
 	return &Handler{
-		hubManager:   hubManager,
-		sessionStore: sessionStore,
-		authService:  authService,
-		guildService: guildService,
+		hubManager:      hubManager,
+		sessionStore:    sessionStore,
+		presenceTracker: presenceTracker,
+		authService:     authService,
+		guildService:    guildService,
+		voiceService:    voiceService,
 	}
 }
 
@@ -168,15 +175,57 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			sessionRecord.Dispatch(EventReady, readyData)
 
+			// Update presence tracking
+			userStatus, becameOnline := h.presenceTracker.AddSession(userID, sessionID)
+
 			// Dispatch GUILD_CREATE for each guild and subscribe to Hub
 			for _, g := range guilds {
 				guildDetail, err := h.guildService.GetGuildDetails(connCtx, userID, g.ID)
 				if err == nil {
+					// Attach active presences of members
+					if len(guildDetail.Members) > 0 {
+						memberIDs := make([]snowflake.ID, len(guildDetail.Members))
+						for i, m := range guildDetail.Members {
+							memberIDs[i] = m.UserID
+						}
+						presencesMap := h.presenceTracker.GetPresences(memberIDs)
+						presences := make([]models.Presence, 0, len(presencesMap))
+						for uid, st := range presencesMap {
+							presences = append(presences, models.Presence{
+								UserID:  uid,
+								Status:  st,
+								GuildID: &g.ID,
+								ClientStatus: map[string]string{
+									"desktop": st,
+								},
+							})
+						}
+						guildDetail.Presences = presences
+					}
+
+					// Attach voice states
+					if h.voiceService != nil {
+						voiceStates, _ := h.voiceService.GetGuildVoiceStates(connCtx, g.ID)
+						guildDetail.VoiceStates = voiceStates
+					}
+
 					sessionRecord.Dispatch(EventGuildCreate, guildDetail)
 				}
 				hub := h.hubManager.GetOrCreateHub(g.ID.String())
 				hub.Register(sessionRecord)
 				sessionRecord.AddHub(hub)
+
+				// If user became online, broadcast PRESENCE_UPDATE to other members of this guild
+				if becameOnline {
+					h.hubManager.BroadcastToGuildExcept(g.ID, EventPresenceUpdate, models.Presence{
+						UserID:  userID,
+						Status:  userStatus,
+						GuildID: &g.ID,
+						ClientStatus: map[string]string{
+							"desktop": userStatus,
+						},
+					}, sessionID)
+				}
 			}
 
 			break // Handshake succeeded
@@ -264,6 +313,31 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// ReadPump in current handler goroutine
 	defer func() {
 		client.CloseWithCode(websocket.StatusNormalClosure, "Connection terminating")
+
+		// Remove presence session
+		becameOffline := h.presenceTracker.RemoveSession(client.UserID(), client.SessionID())
+		if becameOffline {
+			for _, gid := range client.session.GuildIDs {
+				h.hubManager.BroadcastToGuildExcept(gid, EventPresenceUpdate, models.Presence{
+					UserID:  client.UserID(),
+					Status:  models.StatusOffline,
+					GuildID: &gid,
+					ClientStatus: map[string]string{
+						"desktop": models.StatusOffline,
+					},
+				}, client.SessionID())
+			}
+		}
+
+		// Clear voice states for this session
+		if h.voiceService != nil {
+			cleared, err := h.voiceService.ClearVoiceStatesForSession(context.Background(), client.UserID(), client.SessionID())
+			if err == nil {
+				for _, vs := range cleared {
+					h.hubManager.BroadcastToGuild(vs.GuildID, EventVoiceStateUpdate, vs)
+				}
+			}
+		}
 	}()
 
 	for {
@@ -286,6 +360,37 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// Protocol violation: sending IDENTIFY when already authenticated
 			client.CloseWithCode(websocket.StatusCode(CloseCodeAlreadyAuthenticated), "Already authenticated")
 			return
+
+		case OpcodePresenceUpdate:
+			var req models.PresenceUpdateRequest
+			if err := json.Unmarshal(incoming.D, &req); err == nil {
+				newStatus := h.presenceTracker.SetStatus(client.UserID(), req.Status)
+				effectiveStatus := newStatus
+				if effectiveStatus == models.StatusInvisible {
+					effectiveStatus = models.StatusOffline
+				}
+				for _, gid := range client.session.GuildIDs {
+					h.hubManager.BroadcastToGuild(gid, EventPresenceUpdate, models.Presence{
+						UserID:  client.UserID(),
+						Status:  effectiveStatus,
+						GuildID: &gid,
+						ClientStatus: map[string]string{
+							"desktop": effectiveStatus,
+						},
+					})
+				}
+			}
+
+		case OpcodeVoiceStateUpdate:
+			if h.voiceService != nil {
+				var req models.VoiceStateUpdateRequest
+				if err := json.Unmarshal(incoming.D, &req); err == nil {
+					vs, err := h.voiceService.UpdateVoiceState(client.ctx, client.UserID(), client.SessionID(), &req)
+					if err == nil && vs != nil {
+						h.hubManager.BroadcastToGuild(req.GuildID, EventVoiceStateUpdate, vs)
+					}
+				}
+			}
 
 		default:
 			// Other opcodes ignored or logged

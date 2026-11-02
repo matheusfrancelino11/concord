@@ -5,13 +5,20 @@ import { useMessageStore } from "../../stores/messageStore";
 import { MessageFeed } from "../chat/MessageFeed";
 import { MessageInput } from "../chat/MessageInput";
 import { TypingIndicator } from "../chat/TypingIndicator";
+import { MemberList } from "./MemberList";
 import { Hash, Volume2, Bell, Pin, Users } from "lucide-react";
 
 interface MainContentProps {
   onOpenCreateServer: () => void;
+  showMemberList?: boolean;
+  onToggleMemberList?: () => void;
 }
 
-export const MainContent: React.FC<MainContentProps> = ({ onOpenCreateServer }) => {
+export const MainContent: React.FC<MainContentProps> = ({
+  onOpenCreateServer,
+  showMemberList = true,
+  onToggleMemberList,
+}) => {
   const { guilds, selectedGuildId, activeGuildId } = useGuildStore();
   const { channels, channelsByGuild, selectedChannelId, activeChannelId } = useChannelStore();
   const fetchMessages = useMessageStore((s) => s.fetchMessages);
@@ -98,45 +105,63 @@ export const MainContent: React.FC<MainContentProps> = ({ onOpenCreateServer }) 
         <div className="flex items-center gap-3 text-[#b5bac1]">
           <Bell className="w-5 h-5 hover:text-white cursor-pointer transition" />
           <Pin className="w-5 h-5 hover:text-white cursor-pointer transition" />
-          <Users className="w-5 h-5 hover:text-white cursor-pointer transition" />
+          <button
+            type="button"
+            onClick={onToggleMemberList}
+            title={showMemberList ? "Hide Member List" : "Show Member List"}
+            className={`p-1 rounded hover:bg-[#35373c] transition cursor-pointer ${
+              showMemberList ? "text-white" : "text-[#b5bac1] hover:text-white"
+            }`}
+          >
+            <Users className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
-      {/* 2. Channel Body */}
-      {isVoice ? (
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-end space-y-4">
-          <div className="mb-4">
-            <div className="w-16 h-16 rounded-full bg-[#404249] flex items-center justify-center text-white mb-2">
-              <Volume2 className="w-10 h-10" />
+      {/* 2. Channel Body + MemberList Layout */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {isVoice ? (
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-end space-y-4">
+              <div className="mb-4">
+                <div className="w-16 h-16 rounded-full bg-[#404249] flex items-center justify-center text-white mb-2">
+                  <Volume2 className="w-10 h-10" />
+                </div>
+                <h2 className="text-3xl font-bold text-[#f2f3f5]">
+                  Welcome to #{currentChannel?.name || "voice"}!
+                </h2>
+                <div className="mt-4 p-4 rounded-md bg-[#2b2d31] border border-[#383a40] text-xs text-[#dbdee1] max-w-lg">
+                  <span className="font-semibold text-white">🔊 Voice Channel Active:</span> Click to
+                  join or leave voice state. Audio connects via LiveKit SFU in Milestone 4.
+                </div>
+              </div>
             </div>
-            <h2 className="text-3xl font-bold text-[#f2f3f5]">
-              Welcome to #{currentChannel?.name || "voice"}!
-            </h2>
-            <div className="mt-4 p-4 rounded-md bg-[#2b2d31] border border-[#383a40] text-xs text-[#dbdee1] max-w-lg">
-              <span className="font-semibold text-white">🔊 Voice Channel Ready:</span> WebRTC Voice
-              audio and screen sharing will be connected via LiveKit SFU in Milestone 4.
+          ) : currentChannel ? (
+            <>
+              <MessageFeed
+                channelId={currentChannel.id}
+                channelName={currentChannel.name}
+              />
+              <TypingIndicator channelId={currentChannel.id} />
+              <MessageInput
+                channelId={currentChannel.id}
+                channelName={currentChannel.name}
+                onSendMessage={handleSendMessage}
+                onTyping={handleTyping}
+              />
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-[#949ba4]">
+              <p>No channel selected.</p>
             </div>
-          </div>
+          )}
         </div>
-      ) : currentChannel ? (
-        <>
-          <MessageFeed
-            channelId={currentChannel.id}
-            channelName={currentChannel.name}
-          />
-          <TypingIndicator channelId={currentChannel.id} />
-          <MessageInput
-            channelId={currentChannel.id}
-            channelName={currentChannel.name}
-            onSendMessage={handleSendMessage}
-            onTyping={handleTyping}
-          />
-        </>
-      ) : (
-        <div className="flex-1 flex items-center justify-center text-[#949ba4]">
-          <p>No channel selected.</p>
-        </div>
-      )}
+
+        {/* 3. Right Sidebar: Member List */}
+        {showMemberList && currentGuild && (
+          <MemberList guildId={currentGuild.id} />
+        )}
+      </div>
     </main>
   );
 };

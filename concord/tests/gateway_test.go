@@ -260,14 +260,20 @@ func TestGateway_RealTimeHubFanout(t *testing.T) {
 	var createdMsg models.MessageResponse
 	_ = json.Unmarshal(pBody, &createdMsg)
 
-	// Bob must receive MESSAGE_CREATE over WebSocket
-	_, bobMsgData, err := bobConn.Read(ctx)
-	if err != nil {
-		t.Fatalf("Bob failed to receive MESSAGE_CREATE: %v", err)
-	}
+	// Bob must receive MESSAGE_CREATE over WebSocket (skipping any async PRESENCE_UPDATE)
 	var createEnv gateway.GatewayEnvelope
-	if err := json.Unmarshal(bobMsgData, &createEnv); err != nil {
-		t.Fatalf("unmarshal createEnv: %v", err)
+	for {
+		_, bobMsgData, err := bobConn.Read(ctx)
+		if err != nil {
+			t.Fatalf("Bob failed to receive MESSAGE_CREATE: %v", err)
+		}
+		if err := json.Unmarshal(bobMsgData, &createEnv); err != nil {
+			t.Fatalf("unmarshal createEnv: %v", err)
+		}
+		if createEnv.T == gateway.EventPresenceUpdate {
+			continue
+		}
+		break
 	}
 	if createEnv.Op != gateway.OpcodeDispatch || createEnv.T != gateway.EventMessageCreate {
 		t.Fatalf("expected MESSAGE_CREATE, got op=%d t=%s", createEnv.Op, createEnv.T)

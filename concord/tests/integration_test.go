@@ -59,15 +59,19 @@ func setupTestHarness(t *testing.T) *testHarness {
 
 	hubManager := gateway.NewHubManager()
 	sessionStore := gateway.NewSessionStore()
+	presenceTracker := gateway.NewPresenceTracker()
 
 	authService := service.NewAuthService(pool, sf, cfg.JWTSecret)
 	guildService := service.NewGuildService(pool, sf)
 	channelService := service.NewChannelService(pool, sf)
 	messageService := service.NewMessageService(pool, sf, hubManager)
+	voiceService := service.NewVoiceService(pool)
+	inviteService := service.NewInviteService(pool, guildService)
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
-	gatewayHandler := gateway.NewHandler(hubManager, sessionStore, authService, guildService)
+	gatewayHandler := gateway.NewHandler(hubManager, sessionStore, presenceTracker, authService, guildService, voiceService)
 	messageHandler := api.NewMessageHandler(messageService)
+	inviteHandler := api.NewInviteHandler(inviteService, hubManager, sessionStore)
 
 	router := api.NewRouter(&api.RouterDeps{
 		Config:         cfg,
@@ -76,6 +80,7 @@ func setupTestHarness(t *testing.T) *testHarness {
 		GuildHandler:   api.NewGuildHandler(guildService, channelService),
 		ChannelHandler: api.NewChannelHandler(channelService),
 		MessageHandler: messageHandler,
+		InviteHandler:  inviteHandler,
 		GatewayHandler: gatewayHandler,
 		AuthMiddleware: authMiddleware,
 	})

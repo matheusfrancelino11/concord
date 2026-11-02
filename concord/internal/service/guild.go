@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
@@ -147,6 +148,15 @@ func (s *guildService) CreateGuild(ctx context.Context, callerID snowflake.ID, r
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 
+	// Fetch owner user profile for initial member response
+	var ownerUser models.UserSummary
+	_ = s.db.QueryRow(ctx, `SELECT id, username, global_name, avatar FROM users WHERE id = $1`, callerID).Scan(
+		&ownerUser.ID,
+		&ownerUser.Username,
+		&ownerUser.GlobalName,
+		&ownerUser.Avatar,
+	)
+
 	return &models.GuildDetailResponse{
 		ID:           g.ID,
 		Name:         g.Name,
@@ -182,6 +192,16 @@ func (s *guildService) CreateGuild(ctx context.Context, callerID snowflake.ID, r
 				Hoist:       r.Hoist,
 				Mentionable: r.Mentionable,
 				Managed:     r.Managed,
+			},
+		},
+		Members: []models.MemberResponse{
+			{
+				GuildID:  g.ID,
+				UserID:   callerID,
+				JoinedAt: time.Now(),
+				Deaf:     false,
+				Mute:     false,
+				User:     ownerUser,
 			},
 		},
 	}, nil
@@ -320,6 +340,38 @@ func (s *guildService) GetGuildDetails(ctx context.Context, callerID snowflake.I
 		})
 	}
 
+	membersQuery := `
+		SELECT m.guild_id, m.user_id, m.nick, m.joined_at, m.deaf, m.mute, m.flags,
+		       u.id, u.username, u.global_name, u.avatar
+		FROM members m
+		JOIN users u ON m.user_id = u.id
+		WHERE m.guild_id = $1
+		ORDER BY m.joined_at ASC
+	`
+	mRows, err := s.db.Query(ctx, membersQuery, guildID)
+	members := make([]models.MemberResponse, 0)
+	if err == nil {
+		defer mRows.Close()
+		for mRows.Next() {
+			var m models.MemberResponse
+			if err := mRows.Scan(
+				&m.GuildID,
+				&m.UserID,
+				&m.Nick,
+				&m.JoinedAt,
+				&m.Deaf,
+				&m.Mute,
+				&m.Flags,
+				&m.User.ID,
+				&m.User.Username,
+				&m.User.GlobalName,
+				&m.User.Avatar,
+			); err == nil {
+				members = append(members, m)
+			}
+		}
+	}
+
 	return &models.GuildDetailResponse{
 		ID:           g.ID,
 		Name:         g.Name,
@@ -330,6 +382,7 @@ func (s *guildService) GetGuildDetails(ctx context.Context, callerID snowflake.I
 		CreatedAt:    g.CreatedAt,
 		Channels:     channels,
 		Roles:        roles,
+		Members:      members,
 	}, nil
 }
 

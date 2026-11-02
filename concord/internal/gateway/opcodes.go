@@ -2,30 +2,36 @@ package gateway
 
 // Discord WebSocket Gateway Opcodes
 const (
-	OpcodeDispatch       = 0  // Receive: Events (READY, MESSAGE_CREATE, etc.)
-	OpcodeHeartbeat      = 1  // Send/Receive: Ping/Pong keepalive
-	OpcodeIdentify       = 2  // Send: Handshake authentication
-	OpcodePresenceUpdate = 3  // Send: Presence update
-	OpcodeResume         = 6  // Send: Resume disconnected session
-	OpcodeInvalidSession = 9  // Receive: Session is invalid / cannot resume
-	OpcodeHello          = 10 // Receive: Initial handshake payload with heartbeat interval
-	OpcodeHeartbeatACK   = 11 // Receive: Confirmation of heartbeat
+	OpcodeDispatch         = 0  // Receive: Events (READY, MESSAGE_CREATE, etc.)
+	OpcodeHeartbeat        = 1  // Send/Receive: Ping/Pong keepalive
+	OpcodeIdentify         = 2  // Send: Handshake authentication
+	OpcodePresenceUpdate   = 3  // Send: Presence update
+	OpcodeVoiceStateUpdate = 4  // Send: Voice state update
+	OpcodeResume           = 6  // Send: Resume disconnected session
+	OpcodeInvalidSession   = 9  // Receive: Session is invalid / cannot resume
+	OpcodeHello            = 10 // Receive: Initial handshake payload with heartbeat interval
+	OpcodeHeartbeatACK     = 11 // Receive: Confirmation of heartbeat
 )
 
 // Dispatch Event Names
 const (
-	EventReady         = "READY"
-	EventGuildCreate   = "GUILD_CREATE"
-	EventGuildUpdate   = "GUILD_UPDATE"
-	EventGuildDelete   = "GUILD_DELETE"
-	EventChannelCreate = "CHANNEL_CREATE"
-	EventChannelUpdate = "CHANNEL_UPDATE"
-	EventChannelDelete = "CHANNEL_DELETE"
-	EventMessageCreate = "MESSAGE_CREATE"
-	EventMessageUpdate = "MESSAGE_UPDATE"
-	EventMessageDelete = "MESSAGE_DELETE"
-	EventTypingStart   = "TYPING_START"
-	EventResumed       = "RESUMED"
+	EventReady            = "READY"
+	EventGuildCreate      = "GUILD_CREATE"
+	EventGuildUpdate      = "GUILD_UPDATE"
+	EventGuildDelete      = "GUILD_DELETE"
+	EventChannelCreate    = "CHANNEL_CREATE"
+	EventChannelUpdate    = "CHANNEL_UPDATE"
+	EventChannelDelete    = "CHANNEL_DELETE"
+	EventMessageCreate    = "MESSAGE_CREATE"
+	EventMessageUpdate    = "MESSAGE_UPDATE"
+	EventMessageDelete    = "MESSAGE_DELETE"
+	EventTypingStart      = "TYPING_START"
+	EventVoiceStateUpdate = "VOICE_STATE_UPDATE"
+	EventPresenceUpdate   = "PRESENCE_UPDATE"
+	EventMemberAdd        = "GUILD_MEMBER_ADD"
+	EventMemberRemove     = "GUILD_MEMBER_REMOVE"
+	EventMemberUpdate     = "GUILD_MEMBER_UPDATE"
+	EventResumed          = "RESUMED"
 )
 
 // Gateway Close Codes

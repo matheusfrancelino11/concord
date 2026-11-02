@@ -58,17 +58,20 @@ type RoleResponse struct {
 	Managed     bool         `json:"managed"`
 }
 
-// GuildDetailResponse represents the complete server payload with channels and roles
+// GuildDetailResponse represents the complete server payload with channels, roles, members, and states
 type GuildDetailResponse struct {
-	ID           snowflake.ID      `json:"id"`
-	Name         string            `json:"name"`
-	Icon         *string           `json:"icon"`
-	OwnerID      snowflake.ID      `json:"owner_id"`
-	AFKChannelID *snowflake.ID     `json:"afk_channel_id"`
-	AFKTimeout   int               `json:"afk_timeout"`
-	CreatedAt    time.Time         `json:"created_at"`
-	Channels     []ChannelResponse `json:"channels"`
-	Roles        []RoleResponse    `json:"roles"`
+	ID           snowflake.ID         `json:"id"`
+	Name         string               `json:"name"`
+	Icon         *string              `json:"icon"`
+	OwnerID      snowflake.ID         `json:"owner_id"`
+	AFKChannelID *snowflake.ID        `json:"afk_channel_id"`
+	AFKTimeout   int                  `json:"afk_timeout"`
+	CreatedAt    time.Time            `json:"created_at"`
+	Channels     []ChannelResponse    `json:"channels"`
+	Roles        []RoleResponse       `json:"roles"`
+	Members      []MemberResponse     `json:"members,omitempty"`
+	Presences    []Presence           `json:"presences,omitempty"`
+	VoiceStates  []VoiceState         `json:"voice_states,omitempty"`
 }
 
 // Member represents the membership record

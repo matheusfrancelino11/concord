@@ -7,9 +7,14 @@ import { X, Loader2 } from "lucide-react";
 interface CreateServerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onOpenJoinServer?: () => void;
 }
 
-export const CreateServerModal: React.FC<CreateServerModalProps> = ({ open, onOpenChange }) => {
+export const CreateServerModal: React.FC<CreateServerModalProps> = ({
+  open,
+  onOpenChange,
+  onOpenJoinServer,
+}) => {
   const { user } = useAuthStore();
   const { createGuild } = useGuildStore();
 
@@ -100,13 +105,26 @@ export const CreateServerModal: React.FC<CreateServerModalProps> = ({ open, onOp
             </div>
 
             <div className="bg-[#2b2d31] px-6 py-4 flex justify-between items-center mt-6">
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="text-sm text-white hover:underline cursor-pointer"
-              >
-                Back
-              </button>
+              {onOpenJoinServer ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onOpenJoinServer();
+                  }}
+                  className="text-xs text-[#23a55a] hover:underline font-semibold cursor-pointer"
+                >
+                  Have an invite already? Join a server
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  className="text-sm text-white hover:underline cursor-pointer"
+                >
+                  Back
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={isSubmitting}

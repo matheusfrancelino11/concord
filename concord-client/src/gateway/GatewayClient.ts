@@ -337,6 +337,25 @@ export class GatewayClient {
     this.listeners.get(event)?.delete(handler);
   }
 
+  public sendPresenceUpdate(status: string): void {
+    this.send({
+      op: GatewayOpcode.PRESENCE_UPDATE,
+      d: { status },
+    });
+  }
+
+  public sendVoiceStateUpdate(guildId: string, channelId: string | null): void {
+    this.send({
+      op: GatewayOpcode.VOICE_STATE_UPDATE,
+      d: {
+        guild_id: guildId,
+        channel_id: channelId,
+        self_mute: false,
+        self_deaf: false,
+      },
+    });
+  }
+
   private emit(event: string, data: any): void {
     this.listeners.get(event)?.forEach((fn) => {
       try {
@@ -349,3 +368,4 @@ export class GatewayClient {
 }
 
 export const gateway = new GatewayClient();
+export const getGatewayClient = () => gateway;

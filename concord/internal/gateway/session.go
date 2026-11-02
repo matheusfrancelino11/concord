@@ -220,6 +220,48 @@ func (store *SessionStore) RemoveSession(sessionID string) {
 	}
 }
 
+// GetUserSessions retrieves all active session records for a given user
+func (store *SessionStore) GetUserSessions(userID snowflake.ID) []*SessionRecord {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+
+	var result []*SessionRecord
+	for _, s := range store.sessions {
+		if s.UserID == userID {
+			result = append(result, s)
+		}
+	}
+	return result
+}
+
+// AttachGuildToUserSessions attaches a newly joined guild to all active sessions of a user
+func (store *SessionStore) AttachGuildToUserSessions(userID snowflake.ID, guildID snowflake.ID, hub *Hub, guildDetail any) {
+	sessions := store.GetUserSessions(userID)
+	for _, s := range sessions {
+		s.mu.Lock()
+		alreadyPresent := false
+		for _, gid := range s.GuildIDs {
+			if gid == guildID {
+				alreadyPresent = true
+				break
+			}
+		}
+		if !alreadyPresent {
+			s.GuildIDs = append(s.GuildIDs, guildID)
+		}
+		s.mu.Unlock()
+
+		if hub != nil {
+			hub.Register(s)
+			s.AddHub(hub)
+		}
+
+		if guildDetail != nil {
+			s.Dispatch(EventGuildCreate, guildDetail)
+		}
+	}
+}
+
 // PurgeExpired cleans up expired sessions
 func (store *SessionStore) PurgeExpired() {
 	store.mu.Lock()

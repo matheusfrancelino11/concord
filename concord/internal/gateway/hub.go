@@ -5,8 +5,9 @@ import (
 )
 
 type broadcastItem struct {
-	eventType string
-	payload   any
+	eventType       string
+	payload         any
+	exceptSessionID string
 }
 
 // Hub manages active and resumable sessions for a single guild
@@ -61,12 +62,18 @@ func (h *Hub) Unregister(s *SessionRecord) {
 
 // Broadcast enqueues an event for distribution to all sessions belonging to this guild
 func (h *Hub) Broadcast(eventType string, payload any) {
+	h.BroadcastExcept(eventType, payload, "")
+}
+
+// BroadcastExcept enqueues an event for distribution to all sessions except a specific session
+func (h *Hub) BroadcastExcept(eventType string, payload any, exceptSessionID string) {
 	if h.closed.Load() {
 		return
 	}
 	item := &broadcastItem{
-		eventType: eventType,
-		payload:   payload,
+		eventType:       eventType,
+		payload:         payload,
+		exceptSessionID: exceptSessionID,
 	}
 	select {
 	case h.broadcast <- item:
@@ -99,6 +106,9 @@ func (h *Hub) Run() {
 
 		case item := <-h.broadcast:
 			for id, s := range h.sessions {
+				if item.exceptSessionID != "" && id == item.exceptSessionID {
+					continue
+				}
 				if s.IsExpired() {
 					delete(h.sessions, id)
 					continue

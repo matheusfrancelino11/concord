@@ -3,8 +3,17 @@ import { useAuthStore } from "./stores/authStore";
 import { useGuildStore } from "./stores/guildStore";
 import { useChannelStore } from "./stores/channelStore";
 import { useMessageStore } from "./stores/messageStore";
+import { usePresenceStore } from "./stores/presenceStore";
+import { useVoiceStore } from "./stores/voiceStore";
 import { gateway } from "./gateway/GatewayClient";
-import { GatewayEvent, Message } from "./types";
+import {
+  GatewayEvent,
+  Message,
+  Presence,
+  VoiceState,
+  Member,
+  GuildDetail,
+} from "./types";
 import { LoginView } from "./components/auth/LoginView";
 import { RegisterView } from "./components/auth/RegisterView";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -79,6 +88,48 @@ export const App: React.FC = () => {
       handleTypingStart(payload);
     });
 
+    // Milestone 3 Gateway Listeners
+    const unsubPresenceUpdate = gateway.on<Presence>(
+      GatewayEvent.PRESENCE_UPDATE,
+      (payload) => {
+        if (payload.user_id && payload.status) {
+          usePresenceStore.getState().setPresence(payload.user_id, payload.status);
+        }
+      }
+    );
+
+    const unsubVoiceStateUpdate = gateway.on<VoiceState>(
+      GatewayEvent.VOICE_STATE_UPDATE,
+      (payload) => {
+        useVoiceStore.getState().handleVoiceStateUpdate(payload);
+      }
+    );
+
+    const unsubMemberAdd = gateway.on<Member>(
+      GatewayEvent.GUILD_MEMBER_ADD,
+      (payload) => {
+        if (payload.guild_id) {
+          useGuildStore.getState().addMember(payload.guild_id, payload);
+        }
+      }
+    );
+
+    const unsubGuildCreate = gateway.on<GuildDetail>(
+      GatewayEvent.GUILD_CREATE,
+      (guild) => {
+        useGuildStore.getState().addGuildFromGateway(guild);
+        if (guild.members && guild.members.length > 0) {
+          useGuildStore.getState().setMembers(guild.id, guild.members);
+        }
+        if (guild.presences && guild.presences.length > 0) {
+          usePresenceStore.getState().setBulkPresences(guild.presences);
+        }
+        if (guild.voice_states && guild.voice_states.length > 0) {
+          useVoiceStore.getState().setGuildVoiceStates(guild.id, guild.voice_states);
+        }
+      }
+    );
+
     // Sweeper for expired typing states (every 1s)
     const typingTimer = setInterval(() => {
       cleanupExpiredTyping();
@@ -89,6 +140,10 @@ export const App: React.FC = () => {
       unsubMessageUpdate();
       unsubMessageDelete();
       unsubTypingStart();
+      unsubPresenceUpdate();
+      unsubVoiceStateUpdate();
+      unsubMemberAdd();
+      unsubGuildCreate();
       clearInterval(typingTimer);
       gateway.disconnect();
     };

@@ -43,6 +43,9 @@ export interface GuildDetail extends Guild {
   afk_timeout?: number;
   channels: Channel[];
   roles: Role[];
+  members?: Member[];
+  presences?: Presence[];
+  voice_states?: VoiceState[];
 }
 
 export interface Role {
@@ -181,8 +184,94 @@ export const GatewayEvent = {
   MESSAGE_UPDATE: "MESSAGE_UPDATE",
   MESSAGE_DELETE: "MESSAGE_DELETE",
   TYPING_START: "TYPING_START",
+  VOICE_STATE_UPDATE: "VOICE_STATE_UPDATE",
+  PRESENCE_UPDATE: "PRESENCE_UPDATE",
+  GUILD_MEMBER_ADD: "GUILD_MEMBER_ADD",
+  GUILD_MEMBER_REMOVE: "GUILD_MEMBER_REMOVE",
+  GUILD_MEMBER_UPDATE: "GUILD_MEMBER_UPDATE",
   RESUMED: "RESUMED",
 } as const;
+
+// ==========================================
+// Milestone 3: Presence & Voice State Models
+// ==========================================
+
+export type UserStatus = "online" | "idle" | "dnd" | "invisible" | "offline";
+
+export interface Presence {
+  user_id: Snowflake;
+  status: UserStatus;
+  guild_id?: Snowflake;
+  client_status?: {
+    desktop?: UserStatus;
+  };
+  user?: UserSummary;
+}
+
+export interface VoiceState {
+  guild_id: Snowflake;
+  channel_id: Snowflake | null;
+  user_id: Snowflake;
+  session_id: string;
+  self_mute: boolean;
+  self_deaf: boolean;
+  self_video?: boolean;
+  self_stream?: boolean;
+  member?: Member;
+}
+
+export interface VoiceStateUpdatePayload {
+  guild_id: Snowflake;
+  channel_id: Snowflake | null;
+  self_mute?: boolean;
+  self_deaf?: boolean;
+  self_video?: boolean;
+  self_stream?: boolean;
+}
+
+// ==========================================
+// Milestone 3: Invite Models
+// ==========================================
+
+export interface Invite {
+  code: string;
+  guild_id: Snowflake;
+  channel_id: Snowflake;
+  inviter_id: Snowflake;
+  uses: number;
+  max_uses: number;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface CreateInvitePayload {
+  channel_id?: Snowflake;
+  max_uses?: number;
+  max_age?: number;
+}
+
+export interface InviteResponse {
+  code: string;
+  guild_id: Snowflake;
+  channel_id: Snowflake;
+  inviter_id: Snowflake;
+  uses: number;
+  max_uses: number;
+  expires_at: string | null;
+  created_at: string;
+  guild: {
+    id: Snowflake;
+    name: string;
+    icon?: string | null;
+    member_count: number;
+  };
+  channel: {
+    id: Snowflake;
+    name: string;
+    type: number;
+  };
+  inviter: UserSummary;
+}
 
 export type GatewayEventType = (typeof GatewayEvent)[keyof typeof GatewayEvent];
 

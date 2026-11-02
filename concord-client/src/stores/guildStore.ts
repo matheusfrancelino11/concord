@@ -1,12 +1,15 @@
 import { create } from "zustand";
-import { Guild, GuildDetail, CreateGuildPayload } from "../types";
+import { Guild, GuildDetail, CreateGuildPayload, Member } from "../types";
 import { api, ApiError } from "../api/client";
 import { useChannelStore } from "./channelStore";
+
+export const EMPTY_MEMBERS: Member[] = [];
 
 export interface GuildState {
   guilds: Guild[];
   activeGuildId: string | null;
   selectedGuildId: string | null;
+  membersByGuild: Record<string, Member[]>;
   isLoading: boolean;
   error: string | null;
 
@@ -15,6 +18,11 @@ export interface GuildState {
   selectGuild: (guildId: string) => void;
   createGuild: (payload: CreateGuildPayload) => Promise<GuildDetail>;
   deleteGuild: (guildId: string) => Promise<void>;
+  joinGuildWithInvite: (code: string) => Promise<GuildDetail>;
+  fetchMembers: (guildId: string) => Promise<void>;
+  setMembers: (guildId: string, members: Member[]) => void;
+  addMember: (guildId: string, member: Member) => void;
+  addGuildFromGateway: (guild: GuildDetail) => void;
   clearError: () => void;
   reset: () => void;
 }
@@ -23,6 +31,7 @@ export const useGuildStore = create<GuildState>((set, get) => ({
   guilds: [],
   activeGuildId: null,
   selectedGuildId: null,
+  membersByGuild: {},
   isLoading: false,
   error: null,
 
@@ -46,9 +55,10 @@ export const useGuildStore = create<GuildState>((set, get) => ({
         error: null,
       });
 
-      // Synchronize channels for the selected guild
+      // Synchronize channels and members for the selected guild
       if (nextActiveId) {
         useChannelStore.getState().fetchChannels(nextActiveId);
+        get().fetchMembers(nextActiveId);
       } else {
         useChannelStore.getState().reset();
       }
@@ -67,11 +77,119 @@ export const useGuildStore = create<GuildState>((set, get) => ({
       selectedGuildId: guildId,
     });
 
-    // Fetch channels for newly selected guild
+    // Fetch channels and members for newly selected guild
     if (guildId) {
       useChannelStore.getState().fetchChannels(guildId);
+      get().fetchMembers(guildId);
     } else {
       useChannelStore.getState().reset();
+    }
+  },
+
+  fetchMembers: async (guildId: string) => {
+    try {
+      const members = await api.members.list(guildId);
+      set((state) => ({
+        membersByGuild: {
+          ...state.membersByGuild,
+          [guildId]: members || EMPTY_MEMBERS,
+        },
+      }));
+    } catch (err) {
+      console.error(`[guildStore] Failed to fetch members for guild ${guildId}:`, err);
+    }
+  },
+
+  setMembers: (guildId: string, members: Member[]) => {
+    set((state) => ({
+      membersByGuild: {
+        ...state.membersByGuild,
+        [guildId]: members || EMPTY_MEMBERS,
+      },
+    }));
+  },
+
+  addMember: (guildId: string, member: Member) => {
+    set((state) => {
+      const current = state.membersByGuild[guildId] || EMPTY_MEMBERS;
+      if (current.some((m) => m.user_id === member.user_id)) {
+        return state;
+      }
+      return {
+        membersByGuild: {
+          ...state.membersByGuild,
+          [guildId]: [...current, member],
+        },
+      };
+    });
+  },
+
+  joinGuildWithInvite: async (code: string): Promise<GuildDetail> => {
+    set({ isLoading: true, error: null });
+    try {
+      const guild = await api.invites.use(code);
+
+      const summaryGuild: Guild = {
+        id: guild.id,
+        name: guild.name,
+        icon: guild.icon,
+        owner_id: guild.owner_id,
+        created_at: guild.created_at,
+      };
+
+      set((state) => {
+        const alreadyInList = state.guilds.some((g) => g.id === guild.id);
+        const nextGuilds = alreadyInList ? state.guilds : [...state.guilds, summaryGuild];
+        return {
+          guilds: nextGuilds,
+          activeGuildId: guild.id,
+          selectedGuildId: guild.id,
+          membersByGuild: {
+            ...state.membersByGuild,
+            [guild.id]: guild.members || EMPTY_MEMBERS,
+          },
+          isLoading: false,
+          error: null,
+        };
+      });
+
+      if (guild.channels && guild.channels.length > 0) {
+        useChannelStore.getState().setChannels(guild.channels, guild.id);
+      } else {
+        useChannelStore.getState().fetchChannels(guild.id);
+      }
+
+      return guild;
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.message : "Failed to join server with invite";
+      set({ isLoading: false, error: message });
+      throw err;
+    }
+  },
+
+  addGuildFromGateway: (guild: GuildDetail) => {
+    const summaryGuild: Guild = {
+      id: guild.id,
+      name: guild.name,
+      icon: guild.icon,
+      owner_id: guild.owner_id,
+      created_at: guild.created_at,
+    };
+
+    set((state) => {
+      const exists = state.guilds.some((g) => g.id === guild.id);
+      const nextGuilds = exists ? state.guilds : [...state.guilds, summaryGuild];
+      return {
+        guilds: nextGuilds,
+        membersByGuild: {
+          ...state.membersByGuild,
+          [guild.id]: guild.members || state.membersByGuild[guild.id] || EMPTY_MEMBERS,
+        },
+      };
+    });
+
+    if (guild.channels && guild.channels.length > 0) {
+      useChannelStore.getState().setChannels(guild.channels, guild.id);
     }
   },
 
@@ -92,6 +210,10 @@ export const useGuildStore = create<GuildState>((set, get) => ({
         guilds: [...state.guilds, summaryGuild],
         activeGuildId: newGuild.id,
         selectedGuildId: newGuild.id,
+        membersByGuild: {
+          ...state.membersByGuild,
+          [newGuild.id]: newGuild.members || EMPTY_MEMBERS,
+        },
         isLoading: false,
         error: null,
       }));
@@ -134,6 +256,7 @@ export const useGuildStore = create<GuildState>((set, get) => ({
 
       if (nextActiveId) {
         useChannelStore.getState().fetchChannels(nextActiveId);
+        get().fetchMembers(nextActiveId);
       } else {
         useChannelStore.getState().reset();
       }
@@ -151,6 +274,7 @@ export const useGuildStore = create<GuildState>((set, get) => ({
       guilds: [],
       activeGuildId: null,
       selectedGuildId: null,
+      membersByGuild: {},
       isLoading: false,
       error: null,
     });

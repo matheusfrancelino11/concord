@@ -477,31 +477,43 @@ func TestChallenger_DualClient_Fanout_And_CrossGuildIsolation(t *testing.T) {
 	var createdMsg models.MessageResponse
 	_ = json.Unmarshal(pBody, &createdMsg)
 
-	// Bob receives MESSAGE_CREATE
-	_, bobData, err := bobConn.Read(ctx)
-	if err != nil {
-		t.Fatalf("Bob failed to receive MESSAGE_CREATE: %v", err)
-	}
+	// Bob receives MESSAGE_CREATE (skipping any async PRESENCE_UPDATE)
 	var bobEnv gateway.GatewayEnvelope
-	_ = json.Unmarshal(bobData, &bobEnv)
+	for {
+		_, bobData, err := bobConn.Read(ctx)
+		if err != nil {
+			t.Fatalf("Bob failed to receive MESSAGE_CREATE: %v", err)
+		}
+		_ = json.Unmarshal(bobData, &bobEnv)
+		if bobEnv.T == gateway.EventPresenceUpdate {
+			continue
+		}
+		break
+	}
 	if bobEnv.T != gateway.EventMessageCreate {
 		t.Fatalf("Bob expected MESSAGE_CREATE, got %s", bobEnv.T)
 	}
 
 	// Alice receives MESSAGE_CREATE
-	_, aliceData, err := aliceConn.Read(ctx)
-	if err != nil {
-		t.Fatalf("Alice failed to receive MESSAGE_CREATE: %v", err)
-	}
 	var aliceEnv gateway.GatewayEnvelope
-	_ = json.Unmarshal(aliceData, &aliceEnv)
+	for {
+		_, aliceData, err := aliceConn.Read(ctx)
+		if err != nil {
+			t.Fatalf("Alice failed to receive MESSAGE_CREATE: %v", err)
+		}
+		_ = json.Unmarshal(aliceData, &aliceEnv)
+		if aliceEnv.T == gateway.EventPresenceUpdate {
+			continue
+		}
+		break
+	}
 	if aliceEnv.T != gateway.EventMessageCreate {
 		t.Fatalf("Alice expected MESSAGE_CREATE, got %s", aliceEnv.T)
 	}
 
 	// Charlie MUST NOT receive anything (verify isolation with short read timeout)
 	charlieCtx, charlieCancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
-	_, _, err = charlieConn.Read(charlieCtx)
+	_, _, err := charlieConn.Read(charlieCtx)
 	charlieCancel()
 	if err == nil {
 		t.Fatalf("CROSS-GUILD LEAK: Charlie in Guild 2 received an event intended for Guild 1!")
@@ -617,18 +629,23 @@ func TestChallenger_HighConcurrency_Fanout(t *testing.T) {
 
 	// Verify that each of the 5 connected clients receives all 15 MESSAGE_CREATE frames
 	for clientIdx, c := range conns {
-		for m := 0; m < messageCount; m++ {
+		msgReceived := 0
+		for msgReceived < messageCount {
 			_, data, err := c.Read(ctx)
 			if err != nil {
-				t.Fatalf("client %d failed reading message %d: %v", clientIdx, m+1, err)
+				t.Fatalf("client %d failed reading message %d: %v", clientIdx, msgReceived+1, err)
 			}
 			var env gateway.GatewayEnvelope
 			if err := json.Unmarshal(data, &env); err != nil {
-				t.Fatalf("client %d unmarshal %d: %v", clientIdx, m+1, err)
+				t.Fatalf("client %d unmarshal %d: %v", clientIdx, msgReceived+1, err)
+			}
+			if env.T == gateway.EventPresenceUpdate {
+				continue
 			}
 			if env.T != gateway.EventMessageCreate {
 				t.Fatalf("client %d expected MESSAGE_CREATE, got %s", clientIdx, env.T)
 			}
+			msgReceived++
 		}
 	}
 

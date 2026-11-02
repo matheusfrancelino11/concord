@@ -48,11 +48,14 @@ func main() {
 
 	hubManager := gateway.NewHubManager()
 	sessionStore := gateway.NewSessionStore()
+	presenceTracker := gateway.NewPresenceTracker()
 
 	authService := service.NewAuthService(pool, sf, cfg.JWTSecret)
 	guildService := service.NewGuildService(pool, sf)
 	channelService := service.NewChannelService(pool, sf)
 	messageService := service.NewMessageService(pool, sf, hubManager)
+	voiceService := service.NewVoiceService(pool)
+	inviteService := service.NewInviteService(pool, guildService)
 
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
@@ -60,7 +63,8 @@ func main() {
 	guildHandler := api.NewGuildHandler(guildService, channelService)
 	channelHandler := api.NewChannelHandler(channelService)
 	messageHandler := api.NewMessageHandler(messageService)
-	gatewayHandler := gateway.NewHandler(hubManager, sessionStore, authService, guildService)
+	inviteHandler := api.NewInviteHandler(inviteService, hubManager, sessionStore)
+	gatewayHandler := gateway.NewHandler(hubManager, sessionStore, presenceTracker, authService, guildService, voiceService)
 
 	router := api.NewRouter(&api.RouterDeps{
 		Config:         cfg,
@@ -69,6 +73,7 @@ func main() {
 		GuildHandler:   guildHandler,
 		ChannelHandler: channelHandler,
 		MessageHandler: messageHandler,
+		InviteHandler:  inviteHandler,
 		GatewayHandler: gatewayHandler,
 		AuthMiddleware: authMiddleware,
 	})

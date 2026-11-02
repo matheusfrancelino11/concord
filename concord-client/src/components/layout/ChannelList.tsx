@@ -3,24 +3,28 @@ import { useGuildStore } from "../../stores/guildStore";
 import { useChannelStore } from "../../stores/channelStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useMessageStore } from "../../stores/messageStore";
-import { Hash, Volume2, Plus, ChevronDown, Trash2 } from "lucide-react";
+import { useVoiceStore } from "../../stores/voiceStore";
+import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { UserFooter } from "./UserFooter";
 
 interface ChannelListProps {
   onOpenCreateChannel: (type: 0 | 2) => void;
   onOpenCreateServer: () => void;
+  onOpenInvite?: () => void;
 }
 
 export const ChannelList: React.FC<ChannelListProps> = ({
   onOpenCreateChannel,
   onOpenCreateServer,
+  onOpenInvite,
 }) => {
   const { user } = useAuthStore();
   const { guilds, selectedGuildId, activeGuildId, deleteGuild } = useGuildStore();
   const { channels, channelsByGuild, selectedChannelId, activeChannelId, selectChannel, deleteChannel } = useChannelStore();
   const unreadByChannel = useMessageStore((s) => s.unreadByChannel);
   const clearUnread = useMessageStore((s) => s.clearUnread);
+  const { voiceStatesByGuild, activeVoiceChannelId, joinVoiceChannel, leaveVoiceChannel } = useVoiceStore();
 
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentChannelId = selectedChannelId || activeChannelId;
@@ -81,6 +85,16 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                 sideOffset={4}
                 className="w-56 bg-[#111214] border border-[#2b2d31] p-1.5 rounded-md shadow-xl text-sm font-medium z-50 text-[#dbdee1] animate-in fade-in-0 zoom-in-95"
               >
+                {onOpenInvite && (
+                  <DropdownMenu.Item
+                    onClick={onOpenInvite}
+                    className="flex items-center justify-between px-2.5 py-2 rounded text-[#5865F2] hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none font-medium"
+                  >
+                    <span>Invite People</span>
+                    <UserPlus className="w-4 h-4" />
+                  </DropdownMenu.Item>
+                )}
+
                 <DropdownMenu.Item
                   onClick={() => onOpenCreateChannel(0)}
                   className="flex items-center justify-between px-2.5 py-2 rounded text-[#949ba4] hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
@@ -220,32 +234,96 @@ export const ChannelList: React.FC<ChannelListProps> = ({
               <div className="space-y-0.5">
                 {voiceChannels.map((channel) => {
                   const isActive = channel.id === currentChannelId;
+                  const guildVoiceStates = currentGuildId
+                    ? voiceStatesByGuild[currentGuildId] || []
+                    : [];
+                  const connectedUsers = guildVoiceStates.filter(
+                    (vs) => vs.channel_id === channel.id
+                  );
+                  const isInThisVoice = activeVoiceChannelId === channel.id;
+
+                  const handleVoiceClick = () => {
+                    selectChannel(channel.id);
+                    if (!currentGuildId) return;
+                    if (isInThisVoice) {
+                      leaveVoiceChannel();
+                    } else {
+                      joinVoiceChannel(currentGuildId, channel.id);
+                    }
+                  };
+
                   return (
-                    <div
-                      key={channel.id}
-                      onClick={() => selectChannel(channel.id)}
-                      className={`group flex items-center justify-between px-2 py-1.5 rounded-[4px] cursor-pointer transition-colors ${
-                        isActive
-                          ? "bg-[#404249] text-white font-medium"
-                          : "text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]"
-                      }`}
-                    >
-                      <div className="flex items-center min-w-0">
-                        <Volume2 className="w-5 h-5 mr-1.5 shrink-0 text-[#80848e] group-hover:text-[#dbdee1]" />
-                        <span className="truncate text-sm">{channel.name}</span>
+                    <div key={channel.id} className="space-y-0.5">
+                      <div
+                        onClick={handleVoiceClick}
+                        className={`group flex items-center justify-between px-2 py-1.5 rounded-[4px] cursor-pointer transition-colors ${
+                          isActive
+                            ? "bg-[#404249] text-white font-medium"
+                            : "text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]"
+                        }`}
+                      >
+                        <div className="flex items-center min-w-0">
+                          <Volume2
+                            className={`w-5 h-5 mr-1.5 shrink-0 ${
+                              isInThisVoice
+                                ? "text-[#23a55a]"
+                                : "text-[#80848e] group-hover:text-[#dbdee1]"
+                            }`}
+                          />
+                          <span className="truncate text-sm">{channel.name}</span>
+                          {connectedUsers.length > 0 && (
+                            <span className="ml-1.5 text-xs text-[#949ba4] font-normal">
+                              ({connectedUsers.length})
+                            </span>
+                          )}
+                        </div>
+                        {isOwner && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteChannel(channel.id, channel.name);
+                            }}
+                            aria-label={`Delete ${channel.name}`}
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:text-[#f23f43] text-[#949ba4] transition cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
-                      {isOwner && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteChannel(channel.id, channel.name);
-                          }}
-                          aria-label={`Delete ${channel.name}`}
-                          className="opacity-0 group-hover:opacity-100 p-1 hover:text-[#f23f43] text-[#949ba4] transition cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+
+                      {/* Connected Voice Members List */}
+                      {connectedUsers.length > 0 && (
+                        <div className="ml-6 space-y-1 py-0.5 pl-1">
+                          {connectedUsers.map((vs) => {
+                            const vsUser = vs.member?.user;
+                            const vsName =
+                              vs.member?.nick ||
+                              vsUser?.global_name ||
+                              vsUser?.username ||
+                              "User";
+                            return (
+                              <div
+                                key={vs.user_id}
+                                className="flex items-center gap-2 py-0.5 text-xs text-[#dbdee1]"
+                              >
+                                <div className="w-5 h-5 rounded-full bg-[#5865F2] flex items-center justify-center text-[10px] font-bold text-white shrink-0 overflow-hidden">
+                                  {vsUser?.avatar ? (
+                                    <img
+                                      src={vsUser.avatar}
+                                      alt={vsName}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    vsName.charAt(0).toUpperCase()
+                                  )}
+                                </div>
+                                <span className="truncate">{vsName}</span>
+                                <Mic className="w-3 h-3 text-[#23a55a] ml-auto shrink-0" />
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
                   );

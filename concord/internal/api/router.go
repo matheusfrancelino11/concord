@@ -22,6 +22,7 @@ type RouterDeps struct {
 	GuildHandler   *GuildHandler
 	ChannelHandler *ChannelHandler
 	MessageHandler *MessageHandler
+	InviteHandler  *InviteHandler
 	GatewayHandler http.Handler
 	AuthMiddleware *middleware.AuthMiddleware
 }
@@ -99,6 +100,14 @@ func NewRouter(deps *RouterDeps) http.Handler {
 				pr.Patch("/channels/{id}/messages/{mid}", deps.MessageHandler.UpdateMessage)
 				pr.Delete("/channels/{id}/messages/{mid}", deps.MessageHandler.DeleteMessage)
 				pr.Post("/channels/{id}/typing", deps.MessageHandler.TriggerTyping)
+			}
+
+			// Milestone 3 Invite and Member routes
+			if deps.InviteHandler != nil {
+				pr.Post("/guilds/{id}/invites", deps.InviteHandler.CreateInvite)
+				pr.Get("/guilds/{id}/members", deps.InviteHandler.ListMembers)
+				pr.Get("/invites/{code}", deps.InviteHandler.GetInvite)
+				pr.Post("/invites/{code}/use", deps.InviteHandler.UseInvite)
 			}
 		})
 	}
