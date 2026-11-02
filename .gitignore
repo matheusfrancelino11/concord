@@ -1,0 +1,31 @@
+# Environment & Secrets
+.env
+.env.local
+*.env
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Agent metadata & work logs
+.agents/
+
+# Go artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+concord/bin/
+
+# Frontend / Node
+node_modules/
+concord-client/node_modules/
+concord-client/dist/
+concord-client/dist-ssr/
+*.local
+
+# Tauri / Rust build artifacts
+concord-client/src-tauri/target/
+target/
