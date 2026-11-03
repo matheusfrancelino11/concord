@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import { useAuthStore } from "../../stores/authStore";
 import { usePresenceStore } from "../../stores/presenceStore";
+import { useVoiceStore } from "../../stores/voiceStore";
 import { UserStatus } from "../../types";
 import { Mic, MicOff, Headphones, LogOut, Check } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -19,8 +20,7 @@ const STATUS_CONFIG: Record<
 export const UserFooter: React.FC = () => {
   const { user, logout } = useAuthStore();
   const { myStatus, updateMyStatus } = usePresenceStore();
-  const [isMuted, setIsMuted] = useState(false);
-  const [isDeafened, setIsDeafened] = useState(false);
+  const { isMuted, isDeafened, toggleMute, toggleDeafen } = useVoiceStore();
 
   const getInitial = (name?: string): string => {
     return name ? name.charAt(0).toUpperCase() : "?";
@@ -98,7 +98,7 @@ export const UserFooter: React.FC = () => {
       <div className="flex items-center text-[#b5bac1]">
         <button
           type="button"
-          onClick={() => setIsMuted(!isMuted)}
+          onClick={toggleMute}
           title={isMuted ? "Unmute" : "Mute"}
           aria-label={isMuted ? "Unmute" : "Mute"}
           className={`p-1.5 hover:bg-[#35373c] rounded transition cursor-pointer ${
@@ -110,7 +110,7 @@ export const UserFooter: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => setIsDeafened(!isDeafened)}
+          onClick={toggleDeafen}
           title={isDeafened ? "Undeafen" : "Deafen"}
           aria-label={isDeafened ? "Undeafen" : "Deafen"}
           className={`p-1.5 hover:bg-[#35373c] rounded transition cursor-pointer ${

@@ -23,6 +23,7 @@ type RouterDeps struct {
 	ChannelHandler *ChannelHandler
 	MessageHandler *MessageHandler
 	InviteHandler  *InviteHandler
+	VoiceHandler   *VoiceHandler
 	GatewayHandler http.Handler
 	AuthMiddleware *middleware.AuthMiddleware
 }
@@ -108,6 +109,12 @@ func NewRouter(deps *RouterDeps) http.Handler {
 				pr.Get("/guilds/{id}/members", deps.InviteHandler.ListMembers)
 				pr.Get("/invites/{code}", deps.InviteHandler.GetInvite)
 				pr.Post("/invites/{code}/use", deps.InviteHandler.UseInvite)
+			}
+
+			// Milestone 4 Voice routes
+			if deps.VoiceHandler != nil {
+				pr.Post("/channels/{id}/voice/token", deps.VoiceHandler.GenerateToken)
+				pr.Post("/channels/{id}/voice-token", deps.VoiceHandler.GenerateToken)
 			}
 		})
 	}

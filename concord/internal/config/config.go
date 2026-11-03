@@ -19,6 +19,9 @@ type Config struct {
 	WorkerID         int64
 	ProcessID        int64
 	CORSOrigins      []string
+	LiveKitURL       string
+	LiveKitKey       string
+	LiveKitSecret    string
 }
 
 // Load reads configuration from environment variables with fallback defaults.
@@ -30,6 +33,10 @@ func Load() *Config {
 	dbURL := getEnv("DATABASE_URL", "postgres://concord:concord@127.0.0.1:5432/concord?sslmode=disable")
 	jwtSecret := getEnv("JWT_SECRET", "dev_secret_change_in_production_key")
 	env := getEnv("ENV", "development")
+
+	livekitURL := getEnv("LIVEKIT_URL", "ws://127.0.0.1:7880")
+	livekitKey := getEnv("LIVEKIT_KEY", "devkey")
+	livekitSecret := getEnv("LIVEKIT_SECRET", "secret")
 
 	workerID := getEnvInt64("WORKER_ID", 1)
 	processID := getEnvInt64("PROCESS_ID", 1)
@@ -56,6 +63,9 @@ func Load() *Config {
 		WorkerID:         workerID,
 		ProcessID:        processID,
 		CORSOrigins:      origins,
+		LiveKitURL:       livekitURL,
+		LiveKitKey:       livekitKey,
+		LiveKitSecret:    livekitSecret,
 	}
 }
 

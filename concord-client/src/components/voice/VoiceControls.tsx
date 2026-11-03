@@ -1,0 +1,79 @@
+import React from "react";
+import { useVoiceStore } from "../../stores/voiceStore";
+import { useGuildStore } from "../../stores/guildStore";
+import { PhoneOff, Wifi, AlertCircle } from "lucide-react";
+
+export const VoiceControls: React.FC = () => {
+  const {
+    connectionStatus,
+    activeVoiceGuildId,
+    activeVoiceChannelName,
+    leaveVoiceChannel,
+    error,
+  } = useVoiceStore();
+  const guilds = useGuildStore((s) => s.guilds);
+
+  if (connectionStatus === "disconnected" && !error) {
+    return null;
+  }
+
+  const currentGuild = guilds.find((g) => g.id === activeVoiceGuildId);
+  const serverName = currentGuild ? currentGuild.name : "Concord";
+
+  const isConnected = connectionStatus === "connected";
+  const isConnecting = connectionStatus === "connecting";
+  const isError = connectionStatus === "error";
+
+  return (
+    <div className="bg-[#111214] border-t border-[#1f2023] px-3 py-2 select-none">
+      <div className="flex items-center justify-between">
+        {/* Left: Status icon & channel details */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="shrink-0">
+            {isConnected && <Wifi className="w-4 h-4 text-[#23a55a]" />}
+            {isConnecting && <Wifi className="w-4 h-4 text-[#f0b232] animate-pulse" />}
+            {isError && <AlertCircle className="w-4 h-4 text-[#f23f43]" />}
+          </div>
+
+          <div className="flex flex-col min-w-0">
+            <span
+              className={`text-xs font-semibold leading-tight truncate ${
+                isConnected
+                  ? "text-[#23a55a]"
+                  : isConnecting
+                  ? "text-[#f0b232]"
+                  : "text-[#f23f43]"
+              }`}
+            >
+              {isConnected
+                ? "Voice Connected"
+                : isConnecting
+                ? "RTC Connecting..."
+                : "Connection Error"}
+            </span>
+            <span className="text-[11px] text-[#949ba4] leading-tight truncate">
+              {activeVoiceChannelName || "Voice Channel"} / {serverName}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: Disconnect Button */}
+        <button
+          type="button"
+          onClick={leaveVoiceChannel}
+          title="Disconnect from voice"
+          aria-label="Disconnect from voice"
+          className="p-1.5 rounded bg-[#2b2d31] hover:bg-[#f23f43] hover:text-white text-[#dbdee1] transition cursor-pointer shrink-0 ml-2"
+        >
+          <PhoneOff className="w-4 h-4" />
+        </button>
+      </div>
+
+      {isError && error && (
+        <div className="mt-1 text-[10px] text-[#f23f43] truncate" title={error}>
+          {error}
+        </div>
+      )}
+    </div>
+  );
+};

@@ -2,29 +2,40 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/livekit/protocol/auth"
 
 	"concord/internal/models"
 	"concord/internal/snowflake"
 )
 
-// VoiceService manages voice states in PostgreSQL
+// VoiceService manages voice states in PostgreSQL and LiveKit token generation
 type VoiceService interface {
 	UpdateVoiceState(ctx context.Context, userID snowflake.ID, sessionID string, req *models.VoiceStateUpdateRequest) (*models.VoiceState, error)
 	GetGuildVoiceStates(ctx context.Context, guildID snowflake.ID) ([]models.VoiceState, error)
 	ClearVoiceStatesForSession(ctx context.Context, userID snowflake.ID, sessionID string) ([]models.VoiceState, error)
+	GenerateVoiceToken(ctx context.Context, userID snowflake.ID, channelID snowflake.ID) (*models.VoiceTokenResponse, error)
 }
 
 type voiceService struct {
-	db *pgxpool.Pool
+	db            *pgxpool.Pool
+	livekitURL    string
+	livekitKey    string
+	livekitSecret string
 }
 
 // NewVoiceService constructs a new VoiceService
-func NewVoiceService(db *pgxpool.Pool) VoiceService {
+func NewVoiceService(db *pgxpool.Pool, livekitURL, livekitKey, livekitSecret string) VoiceService {
 	return &voiceService{
-		db: db,
+		db:            db,
+		livekitURL:    livekitURL,
+		livekitKey:    livekitKey,
+		livekitSecret: livekitSecret,
 	}
 }
 
@@ -196,3 +207,65 @@ func (s *voiceService) ClearVoiceStatesForSession(ctx context.Context, userID sn
 
 	return cleared, nil
 }
+
+// GenerateVoiceToken generates a LiveKit room join JWT for a user in a voice channel
+func (s *voiceService) GenerateVoiceToken(ctx context.Context, userID snowflake.ID, channelID snowflake.ID) (*models.VoiceTokenResponse, error) {
+	// 1. Verify channel exists and is a voice channel
+	var guildID snowflake.ID
+	var channelType int
+	err := s.db.QueryRow(ctx, `SELECT guild_id, type FROM channels WHERE id = $1`, channelID).Scan(&guildID, &channelType)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrChannelNotFound
+		}
+		return nil, fmt.Errorf("query channel: %w", err)
+	}
+
+	if channelType != models.ChannelTypeVoice {
+		return nil, ErrInvalidChannelType
+	}
+
+	// 2. Verify caller is a guild member
+	var isMember bool
+	checkSQL := `SELECT EXISTS(SELECT 1 FROM members WHERE guild_id = $1 AND user_id = $2)`
+	if err := s.db.QueryRow(ctx, checkSQL, guildID, userID).Scan(&isMember); err != nil || !isMember {
+		return nil, ErrForbidden
+	}
+
+	// 3. Lookup user info for name
+	var username string
+	_ = s.db.QueryRow(ctx, `SELECT username FROM users WHERE id = $1`, userID).Scan(&username)
+	if username == "" {
+		username = userID.String()
+	}
+
+	// 4. Generate LiveKit JWT token
+	roomName := fmt.Sprintf("guild_%s_channel_%s", guildID.String(), channelID.String())
+
+	at := auth.NewAccessToken(s.livekitKey, s.livekitSecret)
+	grant := &auth.VideoGrant{
+		RoomJoin: true,
+		Room:     roomName,
+	}
+	grant.SetCanPublish(true)
+	grant.SetCanSubscribe(true)
+	grant.SetCanPublishData(true)
+
+	at.AddGrant(grant).
+		SetIdentity(userID.String()).
+		SetName(username).
+		SetValidFor(24 * time.Hour)
+
+	token, err := at.ToJWT()
+	if err != nil {
+		return nil, fmt.Errorf("generate livekit token: %w", err)
+	}
+
+	return &models.VoiceTokenResponse{
+		Token:     token,
+		URL:       s.livekitURL,
+		Room:      roomName,
+		ChannelID: channelID.String(),
+	}, nil
+}
+

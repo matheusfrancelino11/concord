@@ -54,7 +54,7 @@ func main() {
 	guildService := service.NewGuildService(pool, sf)
 	channelService := service.NewChannelService(pool, sf)
 	messageService := service.NewMessageService(pool, sf, hubManager)
-	voiceService := service.NewVoiceService(pool)
+	voiceService := service.NewVoiceService(pool, cfg.LiveKitURL, cfg.LiveKitKey, cfg.LiveKitSecret)
 	inviteService := service.NewInviteService(pool, guildService)
 
 	authMiddleware := middleware.NewAuthMiddleware(authService)
@@ -64,6 +64,7 @@ func main() {
 	channelHandler := api.NewChannelHandler(channelService)
 	messageHandler := api.NewMessageHandler(messageService)
 	inviteHandler := api.NewInviteHandler(inviteService, hubManager, sessionStore)
+	voiceHandler := api.NewVoiceHandler(voiceService)
 	gatewayHandler := gateway.NewHandler(hubManager, sessionStore, presenceTracker, authService, guildService, voiceService)
 
 	router := api.NewRouter(&api.RouterDeps{
@@ -74,6 +75,7 @@ func main() {
 		ChannelHandler: channelHandler,
 		MessageHandler: messageHandler,
 		InviteHandler:  inviteHandler,
+		VoiceHandler:   voiceHandler,
 		GatewayHandler: gatewayHandler,
 		AuthMiddleware: authMiddleware,
 	})

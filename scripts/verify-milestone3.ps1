@@ -206,9 +206,11 @@ Log-Header "TIER 3: Desktop Client Production Build"
 if (-not $SkipFrontendBuild) {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     Push-Location $ClientDir
+    $prevEA = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     try {
         Write-Host "  Running `npm run build` (tsc + vite build)..." -ForegroundColor Yellow
-        $buildOutput = npm run build 2>&1 | Out-String
+        $buildOutput = & cmd /c "npm run build"
         $buildCode = $LASTEXITCODE
         $sw.Stop()
 
@@ -221,6 +223,7 @@ if (-not $SkipFrontendBuild) {
         $sw.Stop()
         Record-Test "Frontend Production Build" $false "Exception: $($_.Exception.Message)" $sw.ElapsedMilliseconds
     } finally {
+        $ErrorActionPreference = $prevEA
         Pop-Location
     }
 } else {

@@ -16,6 +16,7 @@ scripts/*.log
 concord-test-server*.log
 
 # Go artifacts & test binaries
+bin/
 *.exe
 *.dll
 *.so

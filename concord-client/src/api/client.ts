@@ -16,6 +16,7 @@ import {
   Invite,
   InviteResponse,
   CreateInvitePayload,
+  VoiceTokenResponse,
 } from "../types";
 
 // Base URL configuration with Vite env fallback
@@ -403,6 +404,14 @@ export const api = {
     list: async (guildId: string): Promise<Member[]> => {
       return request<Member[]>(`/guilds/${guildId}/members`, {
         method: "GET",
+      });
+    },
+  },
+
+  voice: {
+    getToken: async (channelId: string): Promise<VoiceTokenResponse> => {
+      return request<VoiceTokenResponse>(`/channels/${channelId}/voice/token`, {
+        method: "POST",
       });
     },
   },

@@ -229,6 +229,13 @@ export interface VoiceStateUpdatePayload {
   self_stream?: boolean;
 }
 
+export interface VoiceTokenResponse {
+  token: string;
+  url: string;
+  room: string;
+  channel_id: Snowflake;
+}
+
 // ==========================================
 // Milestone 3: Invite Models
 // ==========================================

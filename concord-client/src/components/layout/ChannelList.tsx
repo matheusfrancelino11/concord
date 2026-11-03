@@ -4,9 +4,10 @@ import { useChannelStore } from "../../stores/channelStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useMessageStore } from "../../stores/messageStore";
 import { useVoiceStore } from "../../stores/voiceStore";
-import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic } from "lucide-react";
+import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic, MicOff, Headphones } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { UserFooter } from "./UserFooter";
+import { VoiceControls } from "../voice/VoiceControls";
 
 interface ChannelListProps {
   onOpenCreateChannel: (type: 0 | 2) => void;
@@ -24,7 +25,13 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   const { channels, channelsByGuild, selectedChannelId, activeChannelId, selectChannel, deleteChannel } = useChannelStore();
   const unreadByChannel = useMessageStore((s) => s.unreadByChannel);
   const clearUnread = useMessageStore((s) => s.clearUnread);
-  const { voiceStatesByGuild, activeVoiceChannelId, joinVoiceChannel, leaveVoiceChannel } = useVoiceStore();
+  const {
+    voiceStatesByGuild,
+    activeVoiceChannelId,
+    joinVoiceChannel,
+    leaveVoiceChannel,
+    isUserSpeaking,
+  } = useVoiceStore();
 
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentChannelId = selectedChannelId || activeChannelId;
@@ -248,7 +255,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                     if (isInThisVoice) {
                       leaveVoiceChannel();
                     } else {
-                      joinVoiceChannel(currentGuildId, channel.id);
+                      joinVoiceChannel(currentGuildId, channel.id, channel.name);
                     }
                   };
 
@@ -302,12 +309,19 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                               vsUser?.global_name ||
                               vsUser?.username ||
                               "User";
+                            const speaking = isUserSpeaking(vs.user_id);
                             return (
                               <div
                                 key={vs.user_id}
                                 className="flex items-center gap-2 py-0.5 text-xs text-[#dbdee1]"
                               >
-                                <div className="w-5 h-5 rounded-full bg-[#5865F2] flex items-center justify-center text-[10px] font-bold text-white shrink-0 overflow-hidden">
+                                <div
+                                  className={`w-5 h-5 rounded-full bg-[#5865F2] flex items-center justify-center text-[10px] font-bold text-white shrink-0 overflow-hidden transition-all duration-150 ${
+                                    speaking
+                                      ? "ring-2 ring-[#23a55a] shadow-[0_0_8px_#23a55a]"
+                                      : ""
+                                  }`}
+                                >
                                   {vsUser?.avatar ? (
                                     <img
                                       src={vsUser.avatar}
@@ -319,7 +333,15 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                                   )}
                                 </div>
                                 <span className="truncate">{vsName}</span>
-                                <Mic className="w-3 h-3 text-[#23a55a] ml-auto shrink-0" />
+                                <div className="ml-auto shrink-0 flex items-center">
+                                  {vs.self_deaf ? (
+                                    <Headphones className="w-3 h-3 text-[#f23f43]" />
+                                  ) : vs.self_mute ? (
+                                    <MicOff className="w-3 h-3 text-[#f23f43]" />
+                                  ) : speaking ? (
+                                    <Mic className="w-3 h-3 text-[#23a55a]" />
+                                  ) : null}
+                                </div>
                               </div>
                             );
                           })}
@@ -333,6 +355,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({
           </>
         )}
       </div>
+
+      {/* Voice Controls pinned bar */}
+      <VoiceControls />
 
       {/* 3. User Footer */}
       <UserFooter />

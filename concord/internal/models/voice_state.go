@@ -28,3 +28,11 @@ type VoiceStateUpdateRequest struct {
 	SelfVideo  bool          `json:"self_video"`
 	SelfStream bool          `json:"self_stream"`
 }
+
+// VoiceTokenResponse is returned by POST /v1/channels/:id/voice/token
+type VoiceTokenResponse struct {
+	Token     string `json:"token"`
+	URL       string `json:"url"`
+	Room      string `json:"room"`
+	ChannelID string `json:"channel_id"`
+}

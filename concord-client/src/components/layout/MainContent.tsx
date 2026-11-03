@@ -6,6 +6,7 @@ import { MessageFeed } from "../chat/MessageFeed";
 import { MessageInput } from "../chat/MessageInput";
 import { TypingIndicator } from "../chat/TypingIndicator";
 import { MemberList } from "./MemberList";
+import { VoiceChannelView } from "../voice/VoiceChannelView";
 import { Hash, Volume2, Bell, Pin, Users } from "lucide-react";
 
 interface MainContentProps {
@@ -97,7 +98,7 @@ export const MainContent: React.FC<MainContentProps> = ({
           <span className="text-xs text-[#949ba4] truncate max-w-lg">
             {currentChannel?.topic ||
               (isVoice
-                ? "Voice Channel (LiveKit audio connects in Milestone 4)"
+                ? "Voice Channel (LiveKit SFU Audio)"
                 : "Welcome to the beginning of this channel!")}
           </span>
         </div>
@@ -121,21 +122,8 @@ export const MainContent: React.FC<MainContentProps> = ({
       {/* 2. Channel Body + MemberList Layout */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {isVoice ? (
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-end space-y-4">
-              <div className="mb-4">
-                <div className="w-16 h-16 rounded-full bg-[#404249] flex items-center justify-center text-white mb-2">
-                  <Volume2 className="w-10 h-10" />
-                </div>
-                <h2 className="text-3xl font-bold text-[#f2f3f5]">
-                  Welcome to #{currentChannel?.name || "voice"}!
-                </h2>
-                <div className="mt-4 p-4 rounded-md bg-[#2b2d31] border border-[#383a40] text-xs text-[#dbdee1] max-w-lg">
-                  <span className="font-semibold text-white">🔊 Voice Channel Active:</span> Click to
-                  join or leave voice state. Audio connects via LiveKit SFU in Milestone 4.
-                </div>
-              </div>
-            </div>
+          {isVoice && currentChannel ? (
+            <VoiceChannelView channel={currentChannel} />
           ) : currentChannel ? (
             <>
               <MessageFeed

@@ -344,14 +344,20 @@ export class GatewayClient {
     });
   }
 
-  public sendVoiceStateUpdate(guildId: string, channelId: string | null): void {
+  public sendVoiceStateUpdate(
+    guildId: string,
+    channelId: string | null,
+    options?: { self_mute?: boolean; self_deaf?: boolean; self_video?: boolean; self_stream?: boolean }
+  ): void {
     this.send({
       op: GatewayOpcode.VOICE_STATE_UPDATE,
       d: {
         guild_id: guildId,
         channel_id: channelId,
-        self_mute: false,
-        self_deaf: false,
+        self_mute: options?.self_mute ?? false,
+        self_deaf: options?.self_deaf ?? false,
+        self_video: options?.self_video ?? false,
+        self_stream: options?.self_stream ?? false,
       },
     });
   }
