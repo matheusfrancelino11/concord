@@ -257,8 +257,35 @@ export const GatewayEvent = {
   GUILD_ROLE_DELETE: "GUILD_ROLE_DELETE",
   GUILD_BAN_ADD: "GUILD_BAN_ADD",
   GUILD_BAN_REMOVE: "GUILD_BAN_REMOVE",
+  RELATIONSHIP_ADD: "RELATIONSHIP_ADD",
+  RELATIONSHIP_REMOVE: "RELATIONSHIP_REMOVE",
+  RELATIONSHIP_UPDATE: "RELATIONSHIP_UPDATE",
   RESUMED: "RESUMED",
 } as const;
+
+// ==========================================
+// Milestone: Relationships & Friends System
+// ==========================================
+
+export const RelationshipType = {
+  NONE: 0,
+  FRIEND: 1,
+  BLOCKED: 2,
+  PENDING_INCOMING: 3,
+  PENDING_OUTGOING: 4,
+} as const;
+
+export type RelationshipType = (typeof RelationshipType)[keyof typeof RelationshipType];
+
+export interface Relationship {
+  id: Snowflake; // target user id
+  type: RelationshipType;
+  user: User;
+}
+
+export interface SendFriendRequestPayload {
+  username: string;
+}
 
 // ==========================================
 // Milestone 3: Presence & Voice State Models

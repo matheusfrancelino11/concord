@@ -20,9 +20,10 @@ type RouterDeps struct {
 	Pool           *pgxpool.Pool
 	AuthHandler    *AuthHandler
 	GuildHandler   *GuildHandler
-	ChannelHandler *ChannelHandler
-	MessageHandler *MessageHandler
-	InviteHandler  *InviteHandler
+	ChannelHandler      *ChannelHandler
+	MessageHandler      *MessageHandler
+	RelationshipHandler *RelationshipHandler
+	InviteHandler       *InviteHandler
 	VoiceHandler   *VoiceHandler
 	AdminHandler   *AdminHandler
 	GatewayHandler http.Handler
@@ -98,6 +99,15 @@ func NewRouter(deps *RouterDeps) http.Handler {
 			// Direct Messages routes
 			pr.Get("/users/@me/channels", deps.ChannelHandler.ListUserDMChannels)
 			pr.Post("/users/@me/channels", deps.ChannelHandler.CreateDMChannel)
+
+			// Relationships & Friends routes
+			if deps.RelationshipHandler != nil {
+				pr.Get("/users/@me/relationships", deps.RelationshipHandler.ListRelationships)
+				pr.Post("/users/@me/relationships", deps.RelationshipHandler.SendFriendRequest)
+				pr.Put("/users/@me/relationships/{id}", deps.RelationshipHandler.AcceptFriendRequest)
+				pr.Delete("/users/@me/relationships/{id}", deps.RelationshipHandler.RemoveRelationship)
+				pr.Post("/users/@me/relationships/{id}/block", deps.RelationshipHandler.BlockUser)
+			}
 
 			// Milestone 2 Message routes
 			if deps.MessageHandler != nil {

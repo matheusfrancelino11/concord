@@ -41,16 +41,17 @@ export const useDMStore = create<DMState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const channel = await api.channels.createDM(recipientId);
-      const existing = get().dmChannels.find((c) => c.id === channel.id);
-      if (!existing) {
-        set((state) => ({
-          dmChannels: [channel, ...state.dmChannels],
+      set((state) => {
+        const existing = state.dmChannels.find((c) => c.id === channel.id);
+        const nextList = existing
+          ? state.dmChannels.map((c) => (c.id === channel.id ? channel : c))
+          : [channel, ...state.dmChannels];
+        return {
+          dmChannels: nextList,
           selectedDMChannelId: channel.id,
           isLoading: false,
-        }));
-      } else {
-        set({ selectedDMChannelId: channel.id, isLoading: false });
-      }
+        };
+      });
       return channel;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to open direct message";

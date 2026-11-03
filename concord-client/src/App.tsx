@@ -7,6 +7,7 @@ import { usePresenceStore } from "./stores/presenceStore";
 import { useVoiceStore } from "./stores/voiceStore";
 import { useSettingsStore } from "./stores/settingsStore";
 import { useDMStore } from "./stores/dmStore";
+import { useRelationshipStore } from "./stores/relationshipStore";
 import { gateway } from "./gateway/GatewayClient";
 import {
   GatewayEvent,
@@ -16,6 +17,7 @@ import {
   Member,
   GuildDetail,
   Role,
+  Relationship,
 } from "./types";
 import { LoginView } from "./components/auth/LoginView";
 import { RegisterView } from "./components/auth/RegisterView";
@@ -40,6 +42,7 @@ export const App: React.FC = () => {
     ? (selectedChannelId || activeChannelId)
     : selectedDMChannelId;
   const currentChannelIdRef = useRef(currentChannelId);
+  const hasInitializedGuildRef = useRef(false);
 
   useEffect(() => {
     currentChannelIdRef.current = currentChannelId;
@@ -214,6 +217,28 @@ export const App: React.FC = () => {
       }
     );
 
+    // Relationships Gateway Listeners (Friends system)
+    const unsubRelAdd = gateway.on<Relationship>(
+      GatewayEvent.RELATIONSHIP_ADD,
+      (rel) => {
+        useRelationshipStore.getState().handleRelationshipAdd(rel);
+      }
+    );
+
+    const unsubRelRemove = gateway.on<{ id: string }>(
+      GatewayEvent.RELATIONSHIP_REMOVE,
+      (payload) => {
+        useRelationshipStore.getState().handleRelationshipRemove(payload);
+      }
+    );
+
+    const unsubRelUpdate = gateway.on<Relationship>(
+      GatewayEvent.RELATIONSHIP_UPDATE,
+      (rel) => {
+        useRelationshipStore.getState().handleRelationshipUpdate(rel);
+      }
+    );
+
     // Sweeper for expired typing states (every 1s)
     const typingTimer = setInterval(() => {
       cleanupExpiredTyping();
@@ -234,6 +259,9 @@ export const App: React.FC = () => {
       unsubRoleDelete();
       unsubGuildUpdate();
       unsubGuildCreate();
+      unsubRelAdd();
+      unsubRelRemove();
+      unsubRelUpdate();
       clearInterval(typingTimer);
       gateway.disconnect();
     };
@@ -247,21 +275,29 @@ export const App: React.FC = () => {
     resetMessageStore,
   ]);
 
-  // 3. On authenticated, fetch guilds
+  // 3. On authenticated, fetch guilds, relationships, and direct messages
   useEffect(() => {
     if (isAuthenticated) {
       fetchGuilds();
+      useRelationshipStore.getState().fetchRelationships();
+      useDMStore.getState().fetchDMs();
     }
   }, [isAuthenticated, fetchGuilds]);
 
-  // 4. Auto-select remembered guild or first guild
+  // 4. Auto-select remembered guild or Home/DMs on initial boot only
   useEffect(() => {
-    if (isAuthenticated && guilds.length > 0 && !currentGuildId) {
-      const lastGid = useSettingsStore.getState().lastGuildId;
-      const targetGuild = (lastGid && guilds.find((g) => g.id === lastGid)) || guilds[0];
+    if (!isAuthenticated || guilds.length === 0 || hasInitializedGuildRef.current) return;
+    hasInitializedGuildRef.current = true;
+
+    const lastGid = useSettingsStore.getState().lastGuildId;
+    if (lastGid === "@me" || lastGid === null) {
+      // User was in DMs / Friends view, stay in DMs
+      selectGuild("");
+    } else {
+      const targetGuild = guilds.find((g) => g.id === lastGid) || guilds[0];
       selectGuild(targetGuild.id);
     }
-  }, [isAuthenticated, guilds, currentGuildId, selectGuild]);
+  }, [isAuthenticated, guilds, selectGuild]);
 
   // 5. Fetch channels when selected guild changes
   useEffect(() => {
@@ -296,8 +332,10 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (currentGuildId && currentChannelId) {
       useSettingsStore.getState().setLastLocation(currentGuildId, currentChannelId);
+    } else if (hasInitializedGuildRef.current && !currentGuildId) {
+      useSettingsStore.getState().setLastLocation("@me", selectedDMChannelId || "");
     }
-  }, [currentGuildId, currentChannelId]);
+  }, [currentGuildId, currentChannelId, selectedDMChannelId]);
 
   // 8. Theme synchronization (dark / light)
   const theme = useSettingsStore((s) => s.theme);

@@ -69,6 +69,7 @@ func setupTestHarness(t *testing.T) *testHarness {
 	inviteService := service.NewInviteService(pool, guildService)
 	permService := service.NewPermissionService(pool)
 	adminService := service.NewAdminService(pool, sf, permService, guildService)
+	relService := service.NewRelationshipService(pool, hubManager)
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
 	gatewayHandler := gateway.NewHandler(hubManager, sessionStore, presenceTracker, authService, guildService, voiceService)
@@ -76,19 +77,21 @@ func setupTestHarness(t *testing.T) *testHarness {
 	inviteHandler := api.NewInviteHandler(inviteService, hubManager, sessionStore)
 	voiceHandler := api.NewVoiceHandler(voiceService)
 	adminHandler := api.NewAdminHandler(adminService, hubManager)
+	relHandler := api.NewRelationshipHandler(relService)
 
 	router := api.NewRouter(&api.RouterDeps{
-		Config:         cfg,
-		Pool:           pool,
-		AuthHandler:    api.NewAuthHandler(authService),
-		GuildHandler:   api.NewGuildHandler(guildService, channelService),
-		ChannelHandler: api.NewChannelHandler(channelService),
-		MessageHandler: messageHandler,
-		InviteHandler:  inviteHandler,
-		VoiceHandler:   voiceHandler,
-		AdminHandler:   adminHandler,
-		GatewayHandler: gatewayHandler,
-		AuthMiddleware: authMiddleware,
+		Config:              cfg,
+		Pool:                pool,
+		AuthHandler:         api.NewAuthHandler(authService),
+		GuildHandler:        api.NewGuildHandler(guildService, channelService),
+		ChannelHandler:      api.NewChannelHandler(channelService),
+		MessageHandler:      messageHandler,
+		RelationshipHandler: relHandler,
+		InviteHandler:       inviteHandler,
+		VoiceHandler:        voiceHandler,
+		AdminHandler:        adminHandler,
+		GatewayHandler:      gatewayHandler,
+		AuthMiddleware:      authMiddleware,
 	})
 
 	server := httptest.NewServer(router)

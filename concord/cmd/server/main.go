@@ -59,6 +59,7 @@ func main() {
 	inviteService := service.NewInviteService(pool, guildService)
 	permService := service.NewPermissionService(pool)
 	adminService := service.NewAdminService(pool, sf, permService, guildService)
+	relService := service.NewRelationshipService(pool, hubManager)
 
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
@@ -66,23 +67,25 @@ func main() {
 	guildHandler := api.NewGuildHandler(guildService, channelService)
 	channelHandler := api.NewChannelHandler(channelService)
 	messageHandler := api.NewMessageHandler(messageService)
+	relHandler := api.NewRelationshipHandler(relService)
 	inviteHandler := api.NewInviteHandler(inviteService, hubManager, sessionStore)
 	voiceHandler := api.NewVoiceHandler(voiceService)
 	adminHandler := api.NewAdminHandler(adminService, hubManager)
 	gatewayHandler := gateway.NewHandler(hubManager, sessionStore, presenceTracker, authService, guildService, voiceService)
 
 	router := api.NewRouter(&api.RouterDeps{
-		Config:         cfg,
-		Pool:           pool,
-		AuthHandler:    authHandler,
-		GuildHandler:   guildHandler,
-		ChannelHandler: channelHandler,
-		MessageHandler: messageHandler,
-		InviteHandler:  inviteHandler,
-		VoiceHandler:   voiceHandler,
-		AdminHandler:   adminHandler,
-		GatewayHandler: gatewayHandler,
-		AuthMiddleware: authMiddleware,
+		Config:              cfg,
+		Pool:                pool,
+		AuthHandler:         authHandler,
+		GuildHandler:        guildHandler,
+		ChannelHandler:      channelHandler,
+		MessageHandler:      messageHandler,
+		RelationshipHandler: relHandler,
+		InviteHandler:       inviteHandler,
+		VoiceHandler:        voiceHandler,
+		AdminHandler:        adminHandler,
+		GatewayHandler:      gatewayHandler,
+		AuthMiddleware:      authMiddleware,
 	})
 
 	server := &http.Server{

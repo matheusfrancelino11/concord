@@ -82,10 +82,12 @@ export const useGuildStore = create<GuildState>((set, get) => ({
       const guilds = await api.guilds.list();
       const currentActiveId = get().selectedGuildId || get().activeGuildId;
 
-      let nextActiveId: string | null = null;
-      if (guilds.length > 0) {
+      let nextActiveId: string | null = currentActiveId;
+      if (currentActiveId) {
         const stillExists = guilds.some((g) => g.id === currentActiveId);
-        nextActiveId = stillExists ? currentActiveId : guilds[0].id;
+        if (!stillExists) {
+          nextActiveId = guilds.length > 0 ? guilds[0].id : null;
+        }
       }
 
       set({
@@ -112,18 +114,19 @@ export const useGuildStore = create<GuildState>((set, get) => ({
   },
 
   selectGuild: (guildId: string) => {
-    if (get().selectedGuildId === guildId) return;
+    const nextId = guildId || null;
+    if (get().selectedGuildId === nextId) return;
 
     set({
-      activeGuildId: guildId,
-      selectedGuildId: guildId,
+      activeGuildId: nextId,
+      selectedGuildId: nextId,
     });
 
     // Fetch channels, members, and roles for newly selected guild
-    if (guildId) {
-      useChannelStore.getState().fetchChannels(guildId);
-      get().fetchMembers(guildId);
-      get().fetchRoles(guildId);
+    if (nextId) {
+      useChannelStore.getState().fetchChannels(nextId);
+      get().fetchMembers(nextId);
+      get().fetchRoles(nextId);
     } else {
       useChannelStore.getState().reset();
     }

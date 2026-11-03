@@ -24,6 +24,7 @@ import {
   UpdateMemberPayload,
   CreateBanPayload,
   UpdateGuildPayload,
+  Relationship,
 } from "../types";
 
 // Base URL configuration with Vite env fallback
@@ -360,6 +361,39 @@ export const api = {
       return request<Channel>("/users/@me/channels", {
         method: "POST",
         body: JSON.stringify({ recipient_id: recipientId }),
+      });
+    },
+  },
+
+  relationships: {
+    list: async (): Promise<Relationship[]> => {
+      return request<Relationship[]>("/users/@me/relationships", {
+        method: "GET",
+      });
+    },
+
+    sendRequest: async (username: string): Promise<Relationship> => {
+      return request<Relationship>("/users/@me/relationships", {
+        method: "POST",
+        body: JSON.stringify({ username }),
+      });
+    },
+
+    accept: async (targetId: string): Promise<Relationship> => {
+      return request<Relationship>(`/users/@me/relationships/${targetId}`, {
+        method: "PUT",
+      });
+    },
+
+    remove: async (targetId: string): Promise<void> => {
+      return request<void>(`/users/@me/relationships/${targetId}`, {
+        method: "DELETE",
+      });
+    },
+
+    block: async (targetId: string): Promise<Relationship> => {
+      return request<Relationship>(`/users/@me/relationships/${targetId}/block`, {
+        method: "POST",
       });
     },
   },

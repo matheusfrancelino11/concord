@@ -6,7 +6,9 @@ import { useMessageStore } from "../../stores/messageStore";
 import { useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
 import { useDMStore } from "../../stores/dmStore";
 import { usePresenceStore } from "../../stores/presenceStore";
-import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic, MicOff, Headphones, Tv, Settings, X, MessageSquare } from "lucide-react";
+import { useRelationshipStore } from "../../stores/relationshipStore";
+import { RelationshipType } from "../../types";
+import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic, MicOff, Headphones, Tv, Settings, X, MessageSquare, Users } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { UserFooter } from "./UserFooter";
 import { VoiceControls } from "../voice/VoiceControls";
@@ -31,6 +33,8 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   const clearUnread = useMessageStore((s) => s.clearUnread);
   const { dmChannels, selectedDMChannelId, selectDMChannel, fetchDMs, closeDM, getRecipient } = useDMStore();
   const presences = usePresenceStore((s) => s.presences);
+  const relationships = useRelationshipStore((s) => s.relationships);
+  const fetchRelationships = useRelationshipStore((s) => s.fetchRelationships);
   const voiceStatesByGuild = useVoiceStore((s) => s.voiceStatesByGuild);
   const activeVoiceChannelId = useVoiceStore((s) => s.activeVoiceChannelId);
   const joinVoiceChannel = useVoiceStore((s) => s.joinVoiceChannel);
@@ -40,12 +44,17 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentChannelId = selectedChannelId || activeChannelId;
 
-  // Fetch DMs whenever Direct Messages view is opened
+  const pendingIncomingCount = relationships.filter(
+    (r) => r.type === RelationshipType.PENDING_INCOMING
+  ).length;
+
+  // Fetch DMs and Relationships whenever Direct Messages view is opened
   useEffect(() => {
     if (!currentGuildId) {
       fetchDMs();
+      fetchRelationships();
     }
-  }, [currentGuildId, fetchDMs]);
+  }, [currentGuildId, fetchDMs, fetchRelationships]);
 
   const currentGuild = guilds.find((g) => g.id === currentGuildId);
   const guildChannels = currentGuildId
@@ -159,23 +168,45 @@ export const ChannelList: React.FC<ChannelListProps> = ({
       {/* 2. Channel Tree / DM Conversations */}
       <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4 no-scrollbar">
         {!currentGuild ? (
-          <div>
-            <div className="flex items-center justify-between px-2 pb-1.5 text-[12px] font-bold tracking-wider text-[#949ba4] uppercase">
-              <span>Conversas Diretas</span>
-              <span className="text-[11px] bg-[#1e1f22] px-1.5 py-0.5 rounded text-[#80848e]">
-                {dmChannels.length}
-              </span>
+          <div className="space-y-4">
+            {/* Friends Navigation Item */}
+            <div
+              onClick={() => selectDMChannel(null)}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-[4px] cursor-pointer transition-colors ${
+                selectedDMChannelId === null
+                  ? "bg-[#404249] text-white font-medium"
+                  : "text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Users className="w-5 h-5 shrink-0" />
+                <span className="text-sm font-semibold">Amigos</span>
+              </div>
+              {pendingIncomingCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#f23f43] text-white">
+                  {pendingIncomingCount}
+                </span>
+              )}
             </div>
 
-            {dmChannels.length === 0 ? (
-              <div className="px-3 py-8 text-center text-xs text-[#949ba4] space-y-2">
-                <p>Nenhuma conversa ativa.</p>
-                <p className="text-[11px] text-[#80848e]">
-                  Clique com o botão direito em um amigo no servidor para enviar uma mensagem direta!
-                </p>
+            {/* Direct Messages Section */}
+            <div>
+              <div className="flex items-center justify-between px-2 pb-1.5 text-[12px] font-bold tracking-wider text-[#949ba4] uppercase">
+                <span>Mensagens Diretas</span>
+                <span className="text-[11px] bg-[#1e1f22] px-1.5 py-0.5 rounded text-[#80848e]">
+                  {dmChannels.length}
+                </span>
               </div>
-            ) : (
-              <div className="space-y-0.5">
+
+              {dmChannels.length === 0 ? (
+                <div className="px-3 py-6 text-center text-xs text-[#949ba4] space-y-1.5">
+                  <p>Nenhuma conversa ativa.</p>
+                  <p className="text-[11px] text-[#80848e]">
+                    Inicie uma conversa através da aba Amigos!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-0.5">
                 {dmChannels.map((channel) => {
                   const recipient = getRecipient(channel, user?.id);
                   const recipientId = recipient?.id || "";
@@ -270,6 +301,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                 })}
               </div>
             )}
+            </div>
           </div>
         ) : (
           <>
