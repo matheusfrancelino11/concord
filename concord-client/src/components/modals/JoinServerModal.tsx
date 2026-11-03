@@ -38,7 +38,7 @@ export const JoinServerModal: React.FC<JoinServerModalProps> = ({
       onOpenChange(false);
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Failed to join server. Check the code.";
+        err instanceof Error ? err.message : "Falha ao entrar no servidor. Verifique o código de convite.";
       setError(message);
     } finally {
       setIsLoading(false);
@@ -53,13 +53,13 @@ export const JoinServerModal: React.FC<JoinServerModalProps> = ({
           <div className="flex items-center justify-between pb-3">
             <Dialog.Title className="text-lg font-bold text-[#f2f3f5] flex items-center gap-2">
               <LogIn className="w-5 h-5 text-[#23a55a]" />
-              Join a Server
+              Entrar em um Servidor
             </Dialog.Title>
             <Dialog.Close asChild>
               <button
                 type="button"
                 className="text-[#949ba4] hover:text-white transition p-1 cursor-pointer rounded"
-                aria-label="Close"
+                aria-label="Fechar"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -67,7 +67,7 @@ export const JoinServerModal: React.FC<JoinServerModalProps> = ({
           </div>
 
           <Dialog.Description className="text-xs text-[#949ba4] mb-4">
-            Enter an invite code below to join an existing server with your friends.
+            Digite um código de convite ou link abaixo para entrar em um servidor com seus amigos.
           </Dialog.Description>
 
           {error && (
@@ -79,19 +79,19 @@ export const JoinServerModal: React.FC<JoinServerModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-[11px] font-bold text-[#b5bac1] uppercase tracking-wider mb-2">
-                Invite Code or Link <span className="text-[#f23f43]">*</span>
+                Código de Convite ou Link <span className="text-[#f23f43]">*</span>
               </label>
               <input
                 type="text"
                 value={inputVal}
                 onChange={(e) => setInputVal(e.target.value)}
-                placeholder="e.g. c7k9Xm2q or http://.../c7k9Xm2q"
+                placeholder="ex: c7k9Xm2q ou http://.../c7k9Xm2q"
                 required
                 disabled={isLoading}
                 className="w-full bg-[#1e1f22] text-[#f2f3f5] px-3 py-2.5 rounded border border-[#1e1f22] focus:border-[#5865F2] outline-none text-sm transition placeholder-[#80848e]"
               />
               <span className="text-[11px] text-[#949ba4] mt-1 block">
-                Invites look like <span className="font-mono text-[#dbdee1]">x5RdfgbP</span>
+                Os convites se parecem com <span className="font-mono text-[#dbdee1]">x5RdfgbP</span>
               </span>
             </div>
 
@@ -101,7 +101,7 @@ export const JoinServerModal: React.FC<JoinServerModalProps> = ({
                 onClick={() => onOpenChange(false)}
                 className="text-xs text-[#949ba4] hover:text-white hover:underline transition cursor-pointer"
               >
-                Back
+                Voltar
               </button>
               <button
                 type="submit"
@@ -109,7 +109,7 @@ export const JoinServerModal: React.FC<JoinServerModalProps> = ({
                 className="flex items-center gap-2 px-5 py-2.5 bg-[#23a55a] hover:bg-[#1f934f] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded transition cursor-pointer"
               >
                 {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                Join Server
+                Entrar no Servidor
               </button>
             </div>
           </form>

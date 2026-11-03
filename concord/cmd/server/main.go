@@ -71,6 +71,7 @@ func main() {
 	inviteHandler := api.NewInviteHandler(inviteService, hubManager, sessionStore)
 	voiceHandler := api.NewVoiceHandler(voiceService)
 	adminHandler := api.NewAdminHandler(adminService, hubManager)
+	uploadHandler := api.NewUploadHandler(sf, "./uploads")
 	gatewayHandler := gateway.NewHandler(hubManager, sessionStore, presenceTracker, authService, guildService, voiceService)
 
 	router := api.NewRouter(&api.RouterDeps{
@@ -84,6 +85,7 @@ func main() {
 		InviteHandler:       inviteHandler,
 		VoiceHandler:        voiceHandler,
 		AdminHandler:        adminHandler,
+		UploadHandler:       uploadHandler,
 		GatewayHandler:      gatewayHandler,
 		AuthMiddleware:      authMiddleware,
 	})

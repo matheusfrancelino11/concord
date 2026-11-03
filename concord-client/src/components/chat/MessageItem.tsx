@@ -33,11 +33,11 @@ function formatTimestamp(isoString: string): string {
     const timeStr = date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
     if (isToday) {
-      return `Today at ${timeStr}`;
+      return `Hoje às ${timeStr}`;
     } else if (isYesterday) {
-      return `Yesterday at ${timeStr}`;
+      return `Ontem às ${timeStr}`;
     } else {
-      return `${date.toLocaleDateString()} ${timeStr}`;
+      return `${date.toLocaleDateString("pt-BR")} ${timeStr}`;
     }
   } catch {
     return "";
@@ -83,7 +83,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const authorName =
-    message.author?.global_name || message.author?.username || "Unknown User";
+    message.author?.global_name || message.author?.username || "Usuário desconhecido";
   const initial = authorName.charAt(0).toUpperCase() || "?";
   const avatarBg = getAvatarColor(message.author?.id || authorName);
 
@@ -112,7 +112,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       await onEdit(message.id, trimmed);
       setIsEditing(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to edit message";
+      const msg = err instanceof Error ? err.message : "Falha ao editar mensagem";
       alert(msg);
     } finally {
       setIsSaving(false);
@@ -131,11 +131,11 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   };
 
   const handleDelete = async () => {
-    if (window.confirm("Are you sure you want to delete this message?")) {
+    if (window.confirm("Tem certeza que deseja excluir esta mensagem?")) {
       try {
         await onDelete(message.id);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to delete message";
+        const msg = err instanceof Error ? err.message : "Falha ao excluir mensagem";
         alert(msg);
       }
     }
@@ -160,6 +160,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 
   // Find image URLs embedded in the message
   const imageUrls = Array.from(message.content.matchAll(IMAGE_URL_REGEX)).map((m) => m[0]);
+  const textWithoutImages = message.content.replace(IMAGE_URL_REGEX, "").trim();
 
   // Render message content with formatted mentions
   const renderFormattedContent = (text: string) => {
@@ -237,21 +238,21 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               />
               <div className="flex items-center justify-between text-xs text-[#949ba4] mt-1 select-none">
                 <span>
-                  escape to{" "}
+                  ESC para{" "}
                   <button
                     type="button"
                     onClick={() => setIsEditing(false)}
-                    className="text-[#00a8fc] hover:underline"
+                    className="text-[#00a8fc] hover:underline cursor-pointer"
                   >
-                    cancel
+                    cancelar
                   </button>{" "}
-                  • enter to{" "}
+                  • ENTER para{" "}
                   <button
                     type="button"
                     onClick={handleSaveEdit}
-                    className="text-[#00a8fc] hover:underline"
+                    className="text-[#00a8fc] hover:underline cursor-pointer"
                   >
-                    save
+                    salvar
                   </button>
                 </span>
                 <div className="flex gap-2">
@@ -260,7 +261,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                     onClick={() => setIsEditing(false)}
                     className="px-2 py-1 bg-[#4e5058] hover:bg-[#6d6f78] text-white rounded text-xs flex items-center gap-1 cursor-pointer"
                   >
-                    <X className="w-3 h-3" /> Cancel
+                    <X className="w-3 h-3" /> Cancelar
                   </button>
                   <button
                     type="button"
@@ -268,17 +269,21 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                     disabled={isSaving || !editContent.trim()}
                     className="px-2 py-1 bg-[#5865F2] hover:bg-[#4752c4] text-white rounded text-xs flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                   >
-                    <Check className="w-3 h-3" /> Save
+                    <Check className="w-3 h-3" /> Salvar
                   </button>
                 </div>
               </div>
             </div>
           ) : (
             <div className="text-[15px] text-[#dbdee1] leading-relaxed whitespace-pre-wrap break-words mt-0.5">
-              {renderFormattedContent(message.content)}
+              {textWithoutImages
+                ? renderFormattedContent(textWithoutImages)
+                : imageUrls.length === 0
+                ? renderFormattedContent(message.content)
+                : null}
               {message.edited_at && (
                 <span className="text-[10px] text-[#949ba4] ml-1.5 select-none font-medium">
-                  (edited)
+                  (editado)
                 </span>
               )}
             </div>
@@ -292,7 +297,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                   <a href={url} target="_blank" rel="noopener noreferrer">
                     <img
                       src={url}
-                      alt="attachment preview"
+                      alt="Anexo de imagem"
                       loading="lazy"
                       className="max-h-72 w-auto object-contain rounded hover:opacity-95 transition cursor-pointer"
                     />
@@ -382,8 +387,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             <button
               type="button"
               onClick={() => setIsEditing(true)}
-              title="Edit Message"
-              aria-label="Edit Message"
+              title="Editar Mensagem"
+              aria-label="Editar Mensagem"
               className="p-1.5 text-[#b5bac1] hover:text-[#f2f3f5] hover:bg-[#35373c] transition cursor-pointer"
             >
               <Pencil className="w-4 h-4" />
@@ -395,8 +400,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             <button
               type="button"
               onClick={handleDelete}
-              title="Delete Message"
-              aria-label="Delete Message"
+              title="Excluir Mensagem"
+              aria-label="Excluir Mensagem"
               className="p-1.5 text-[#b5bac1] hover:text-[#f23f43] hover:bg-[#35373c] rounded-r transition cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />

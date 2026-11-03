@@ -11,10 +11,10 @@ const STATUS_CONFIG: Record<
   UserStatus,
   { label: string; color: string; desc: string }
 > = {
-  online: { label: "Online", color: "bg-[#23a55a]", desc: "" },
-  idle: { label: "Idle", color: "bg-[#f0b232]", desc: "" },
-  dnd: { label: "Do Not Disturb", color: "bg-[#f23f43]", desc: "Will not receive desktop notifications" },
-  invisible: { label: "Invisible", color: "bg-[#80848e]", desc: "Appear offline to others" },
+  online: { label: "Disponível", color: "bg-[#23a55a]", desc: "" },
+  idle: { label: "Ausente", color: "bg-[#f0b232]", desc: "" },
+  dnd: { label: "Não Perturbe", color: "bg-[#f23f43]", desc: "Não receberá notificações na área de trabalho" },
+  invisible: { label: "Invisível", color: "bg-[#80848e]", desc: "Aparece offline para os outros" },
   offline: { label: "Offline", color: "bg-[#80848e]", desc: "" },
 };
 
@@ -65,7 +65,7 @@ export const UserFooter: React.FC = () => {
             className="w-56 bg-[#111214] border border-[#2b2d31] p-1.5 rounded-md shadow-2xl text-xs font-medium z-50 text-[#dbdee1] animate-in fade-in-0 zoom-in-95"
           >
             <div className="px-2 py-1.5 font-bold text-[10px] text-[#949ba4] uppercase tracking-wider">
-              Set Status
+              Definir Status
             </div>
 
             {(["online", "idle", "dnd", "invisible"] as UserStatus[]).map((statusKey) => {
@@ -101,8 +101,8 @@ export const UserFooter: React.FC = () => {
         <button
           type="button"
           onClick={toggleMute}
-          title={isMuted ? "Unmute" : "Mute"}
-          aria-label={isMuted ? "Unmute" : "Mute"}
+          title={isMuted ? "Desmutar" : "Mutar"}
+          aria-label={isMuted ? "Desmutar" : "Mutar"}
           className={`p-1.5 hover:bg-[#35373c] rounded transition cursor-pointer ${
             isMuted ? "text-[#f23f43]" : "hover:text-white"
           }`}
@@ -113,8 +113,8 @@ export const UserFooter: React.FC = () => {
         <button
           type="button"
           onClick={toggleDeafen}
-          title={isDeafened ? "Undeafen" : "Deafen"}
-          aria-label={isDeafened ? "Undeafen" : "Deafen"}
+          title={isDeafened ? "Desensurdecer" : "Ensurdecer"}
+          aria-label={isDeafened ? "Desensurdecer" : "Ensurdecer"}
           className={`p-1.5 hover:bg-[#35373c] rounded transition cursor-pointer ${
             isDeafened ? "text-[#f23f43]" : "hover:text-white"
           }`}
@@ -135,8 +135,8 @@ export const UserFooter: React.FC = () => {
         <button
           type="button"
           onClick={logout}
-          title="Log Out"
-          aria-label="Log Out"
+          title="Sair"
+          aria-label="Sair"
           className="p-1.5 hover:bg-[#35373c] hover:text-[#f23f43] rounded transition cursor-pointer"
         >
           <LogOut className="w-4 h-4" />

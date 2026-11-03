@@ -51,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
               <button
                 type="button"
                 onClick={handleHomeClick}
-                aria-label="Direct Messages"
+                aria-label="Mensagens Diretas"
                 className={`w-12 h-12 flex items-center justify-center transition-all duration-200 cursor-pointer overflow-hidden ${
                   isHomeActive
                     ? "rounded-[16px] bg-[#1FCE66] text-[#1FCE66] shadow-lg shadow-[#1FCE66]/20"
@@ -76,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
               sideOffset={12}
               className="bg-[#111214] text-white text-xs font-semibold px-3 py-1.5 rounded-md shadow-lg z-50 animate-in fade-in-0 zoom-in-95"
             >
-              Direct Messages
+              Mensagens Diretas
               <Tooltip.Arrow className="fill-[#111214]" />
             </Tooltip.Content>
           </Tooltip.Portal>
@@ -102,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
                     <button
                       type="button"
                       onClick={() => selectGuild(guild.id)}
-                      aria-label={`Server: ${guild.name}`}
+                      aria-label={`Servidor: ${guild.name}`}
                       className={`w-12 h-12 flex items-center justify-center text-sm font-semibold transition-all duration-200 cursor-pointer overflow-hidden ${
                         isActive
                           ? "rounded-[16px] bg-[#5865F2] text-white"
@@ -142,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
                 <button
                   type="button"
                   onClick={onOpenCreateServer}
-                  aria-label="Add a Server"
+                  aria-label="Adicionar um Servidor"
                   className="w-12 h-12 rounded-[24px] bg-[#313338] text-[#23a55a] group-hover:rounded-[16px] group-hover:bg-[#23a55a] group-hover:text-white flex items-center justify-center transition-all duration-200 cursor-pointer"
                 >
                   <Plus className="w-6 h-6" />
@@ -155,7 +155,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
                 sideOffset={12}
                 className="bg-[#111214] text-white text-xs font-semibold px-3 py-1.5 rounded-md shadow-lg z-50 animate-in fade-in-0 zoom-in-95"
               >
-                Add a Server
+                Adicionar um Servidor
                 <Tooltip.Arrow className="fill-[#111214]" />
               </Tooltip.Content>
             </Tooltip.Portal>

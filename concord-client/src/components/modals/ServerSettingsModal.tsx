@@ -410,7 +410,7 @@ export const ServerSettingsModal: React.FC<ServerSettingsModalProps> = ({
                 }`}
               >
                 <BanIcon className="w-4 h-4" />
-                Bans
+                Banimentos
               </button>
             </div>
 

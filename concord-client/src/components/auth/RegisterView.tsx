@@ -87,9 +87,9 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onNavigateToLogin })
         <div className="flex flex-col items-center mb-4">
           <ConcordLogo size={64} variant="full" animated={true} />
         </div>
-        <h1 className="text-2xl font-bold text-center text-[#f2f3f5]">Create an account</h1>
+        <h1 className="text-2xl font-bold text-center text-[#f2f3f5]">Criar uma conta</h1>
         <p className="text-[#949ba4] text-center text-sm mt-1 mb-6">
-          Be part of Concord with your friends
+          Faça parte do Concord com seus amigos
         </p>
 
         {activeError && (
@@ -102,7 +102,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onNavigateToLogin })
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs font-bold text-[#b5bac1] uppercase tracking-wider mb-2 block">
-              Email <span className="text-[#f23f43]">*</span>
+              E-mail <span className="text-[#f23f43]">*</span>
             </label>
             <input
               type="email"
@@ -114,26 +114,26 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onNavigateToLogin })
                 if (validationError) setValidationError(null);
               }}
               className="w-full bg-[#1e1f22] border border-[#1e1f22] focus:border-[#5865F2] focus:outline-none rounded-[3px] px-3 py-2 text-sm text-[#f2f3f5] placeholder-zinc-500 transition-colors"
-              placeholder="name@example.com"
+              placeholder="nome@exemplo.com"
             />
           </div>
 
           <div>
             <label className="text-xs font-bold text-[#b5bac1] uppercase tracking-wider mb-2 block">
-              Display Name <span className="text-[#949ba4] font-normal normal-case">(Optional)</span>
+              Nome de Exibição <span className="text-[#949ba4] font-normal normal-case">(Opcional)</span>
             </label>
             <input
               type="text"
               value={globalName}
               onChange={(e) => setGlobalName(e.target.value)}
               className="w-full bg-[#1e1f22] border border-[#1e1f22] focus:border-[#5865F2] focus:outline-none rounded-[3px] px-3 py-2 text-sm text-[#f2f3f5] placeholder-zinc-500 transition-colors"
-              placeholder="How friends see you"
+              placeholder="Como seus amigos verão você"
             />
           </div>
 
           <div>
             <label className="text-xs font-bold text-[#b5bac1] uppercase tracking-wider mb-2 block">
-              Username <span className="text-[#f23f43]">*</span>
+              Nome de Usuário <span className="text-[#f23f43]">*</span>
             </label>
             <input
               type="text"
@@ -144,13 +144,13 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onNavigateToLogin })
                 if (validationError) setValidationError(null);
               }}
               className="w-full bg-[#1e1f22] border border-[#1e1f22] focus:border-[#5865F2] focus:outline-none rounded-[3px] px-3 py-2 text-sm text-[#f2f3f5] placeholder-zinc-500 transition-colors"
-              placeholder="e.g. alice"
+              placeholder="ex: alice"
             />
           </div>
 
           <div>
             <label className="text-xs font-bold text-[#b5bac1] uppercase tracking-wider mb-2 block">
-              Password <span className="text-[#f23f43]">*</span>
+              Senha <span className="text-[#f23f43]">*</span>
             </label>
             <input
               type="password"
@@ -161,13 +161,13 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onNavigateToLogin })
                 if (validationError) setValidationError(null);
               }}
               className="w-full bg-[#1e1f22] border border-[#1e1f22] focus:border-[#5865F2] focus:outline-none rounded-[3px] px-3 py-2 text-sm text-[#f2f3f5] placeholder-zinc-500 transition-colors"
-              placeholder="At least 8 characters"
+              placeholder="Pelo menos 8 caracteres"
             />
           </div>
 
           <div>
             <label className="text-xs font-bold text-[#b5bac1] uppercase tracking-wider mb-2 block">
-              Confirm Password <span className="text-[#f23f43]">*</span>
+              Confirmar Senha <span className="text-[#f23f43]">*</span>
             </label>
             <input
               type="password"
@@ -178,28 +178,28 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onNavigateToLogin })
                 if (validationError) setValidationError(null);
               }}
               className="w-full bg-[#1e1f22] border border-[#1e1f22] focus:border-[#5865F2] focus:outline-none rounded-[3px] px-3 py-2 text-sm text-[#f2f3f5] placeholder-zinc-500 transition-colors"
-              placeholder="Repeat password"
+              placeholder="Repita sua senha"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#5865F2] hover:bg-[#4752c4] active:bg-[#3c45a5] text-white font-medium py-2.5 rounded-[3px] text-sm transition-colors mt-6 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[#5865F2] hover:bg-[#4752c4] active:bg-[#3c45a5] text-white font-medium py-2.5 rounded-[3px] text-sm transition-colors mt-6 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Creating account...</span>
+                <span>Criando conta...</span>
               </>
             ) : (
-              "Continue"
+              "Continuar"
             )}
           </button>
         </form>
 
         <div className="text-xs text-[#949ba4] mt-4">
-          Already have an account?{" "}
+          Já tem uma conta?{" "}
           <button
             type="button"
             onClick={() => {
@@ -208,7 +208,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onNavigateToLogin })
             }}
             className="text-[#00a8fc] hover:underline font-normal cursor-pointer"
           >
-            Log In
+            Entrar
           </button>
         </div>
       </div>

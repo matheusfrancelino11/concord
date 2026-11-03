@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -16,18 +18,19 @@ import (
 
 // RouterDeps contains dependencies required to construct the HTTP router
 type RouterDeps struct {
-	Config         *config.Config
-	Pool           *pgxpool.Pool
-	AuthHandler    *AuthHandler
-	GuildHandler   *GuildHandler
+	Config              *config.Config
+	Pool                *pgxpool.Pool
+	AuthHandler         *AuthHandler
+	GuildHandler        *GuildHandler
 	ChannelHandler      *ChannelHandler
 	MessageHandler      *MessageHandler
 	RelationshipHandler *RelationshipHandler
 	InviteHandler       *InviteHandler
-	VoiceHandler   *VoiceHandler
-	AdminHandler   *AdminHandler
-	GatewayHandler http.Handler
-	AuthMiddleware *middleware.AuthMiddleware
+	VoiceHandler        *VoiceHandler
+	AdminHandler        *AdminHandler
+	UploadHandler       *UploadHandler
+	GatewayHandler      http.Handler
+	AuthMiddleware      *middleware.AuthMiddleware
 }
 
 // NewRouter constructs the Chi router with standard middleware and routes
@@ -46,6 +49,15 @@ func NewRouter(deps *RouterDeps) http.Handler {
 		r.Get("/gateway", deps.GatewayHandler.ServeHTTP)
 		r.Get("/v1/gateway", deps.GatewayHandler.ServeHTTP)
 	}
+
+	// Mount static uploads directory for attachments/images
+	workDir, _ := os.Getwd()
+	uploadsDir := filepath.Join(workDir, "uploads")
+	_ = os.MkdirAll(uploadsDir, 0755)
+	fileServer := http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir)))
+	r.Get("/uploads/*", fileServer.ServeHTTP)
+	v1FileServer := http.StripPrefix("/v1/uploads/", http.FileServer(http.Dir(uploadsDir)))
+	r.Get("/v1/uploads/*", v1FileServer.ServeHTTP)
 
 	// Health check handler
 	healthHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -116,6 +128,11 @@ func NewRouter(deps *RouterDeps) http.Handler {
 				pr.Patch("/channels/{id}/messages/{mid}", deps.MessageHandler.UpdateMessage)
 				pr.Delete("/channels/{id}/messages/{mid}", deps.MessageHandler.DeleteMessage)
 				pr.Post("/channels/{id}/typing", deps.MessageHandler.TriggerTyping)
+			}
+
+			// File / Image Uploads
+			if deps.UploadHandler != nil {
+				pr.Post("/uploads", deps.UploadHandler.UploadFile)
 			}
 
 			// Milestone 3 Invite and Member routes

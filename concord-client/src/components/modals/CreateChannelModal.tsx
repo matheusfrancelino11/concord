@@ -49,13 +49,13 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!currentGuildId) {
-      setError("No active server selected.");
+      setError("Nenhum servidor selecionado.");
       return;
     }
 
     const trimmed = name.trim();
     if (trimmed.length < 1 || trimmed.length > 100) {
-      setError("Channel name must be between 1 and 100 characters.");
+      setError("O nome do canal deve ter entre 1 e 100 caracteres.");
       return;
     }
 
@@ -69,7 +69,7 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
       });
       onOpenChange(false);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to create channel.";
+      const message = err instanceof Error ? err.message : "Falha ao criar canal.";
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -85,18 +85,18 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
             <Dialog.Close asChild>
               <button
                 type="button"
-                aria-label="Close dialog"
-                className="absolute top-4 right-4 text-[#949ba4] hover:text-white transition"
+                aria-label="Fechar"
+                className="absolute top-4 right-4 text-[#949ba4] hover:text-white transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </Dialog.Close>
 
             <Dialog.Title className="text-xl font-bold text-[#f2f3f5]">
-              Create Channel
+              Criar Canal
             </Dialog.Title>
             <Dialog.Description className="text-xs text-[#949ba4] mt-1">
-              in {type === 0 ? "Text Channels" : "Voice Channels"}
+              em {type === 0 ? "Canais de Texto" : "Canais de Voz"}
             </Dialog.Description>
           </div>
 
@@ -111,7 +111,7 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
               {/* Channel Type Selector */}
               <div>
                 <label className="text-xs font-bold text-[#b5bac1] uppercase tracking-wider mb-2 block">
-                  Channel Type
+                  Tipo de Canal
                 </label>
                 <div className="space-y-2">
                   <div
@@ -127,8 +127,8 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
                   >
                     <Hash className="w-6 h-6 text-[#949ba4] shrink-0" />
                     <div className="flex-1">
-                      <div className="text-sm font-semibold text-white">Text</div>
-                      <div className="text-xs text-[#949ba4]">Post messages, images, and memes</div>
+                      <div className="text-sm font-semibold text-white">Texto</div>
+                      <div className="text-xs text-[#949ba4]">Poste mensagens, imagens e conversas</div>
                     </div>
                     <div
                       className={`w-4 h-4 rounded-full border flex items-center justify-center ${
@@ -149,8 +149,8 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
                   >
                     <Volume2 className="w-6 h-6 text-[#949ba4] shrink-0" />
                     <div className="flex-1">
-                      <div className="text-sm font-semibold text-white">Voice</div>
-                      <div className="text-xs text-[#949ba4]">Hang out with voice, video, and screen share</div>
+                      <div className="text-sm font-semibold text-white">Voz</div>
+                      <div className="text-xs text-[#949ba4]">Converse por voz, vídeo e compartilhamento de tela</div>
                     </div>
                     <div
                       className={`w-4 h-4 rounded-full border flex items-center justify-center ${
@@ -166,7 +166,7 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
               {/* Channel Name */}
               <div>
                 <label className="text-xs font-bold text-[#b5bac1] uppercase tracking-wider mb-2 block">
-                  Channel Name <span className="text-[#f23f43]">*</span>
+                  Nome do Canal <span className="text-[#f23f43]">*</span>
                 </label>
                 <div className="relative flex items-center">
                   <div className="absolute left-3 text-[#949ba4]">
@@ -179,7 +179,7 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
                     value={name}
                     onChange={(e) => handleNameChange(e.target.value)}
                     className="w-full bg-[#1e1f22] border border-[#1e1f22] focus:border-[#5865F2] focus:outline-none rounded-[3px] pl-9 pr-3 py-2 text-sm text-[#f2f3f5] placeholder-zinc-500 transition-colors"
-                    placeholder={type === 0 ? "new-channel" : "General Voice"}
+                    placeholder={type === 0 ? "novo-canal" : "Voz Geral"}
                   />
                 </div>
               </div>
@@ -187,14 +187,14 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
               {/* Channel Topic */}
               <div>
                 <label className="text-xs font-bold text-[#b5bac1] uppercase tracking-wider mb-2 block">
-                  Channel Topic <span className="text-[#949ba4] font-normal normal-case">(Optional)</span>
+                  Tópico do Canal <span className="text-[#949ba4] font-normal normal-case">(Opcional)</span>
                 </label>
                 <input
                   type="text"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   className="w-full bg-[#1e1f22] border border-[#1e1f22] focus:border-[#5865F2] focus:outline-none rounded-[3px] px-3 py-2 text-sm text-[#f2f3f5] placeholder-zinc-500 transition-colors"
-                  placeholder="Let everyone know what this channel is about"
+                  placeholder="Conte a todos sobre o que é este canal"
                 />
               </div>
             </div>
@@ -205,7 +205,7 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
                 onClick={() => onOpenChange(false)}
                 className="text-sm text-white hover:underline cursor-pointer px-3 py-2"
               >
-                Cancel
+                Cancelar
               </button>
               <button
                 type="submit"
@@ -213,7 +213,7 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
                 className="bg-[#5865F2] hover:bg-[#4752c4] active:bg-[#3c45a5] text-white font-medium px-5 py-2 rounded-[3px] text-sm transition disabled:opacity-50 flex items-center gap-2 cursor-pointer"
               >
                 {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                <span>Create Channel</span>
+                <span>Criar Canal</span>
               </button>
             </div>
           </form>

@@ -38,6 +38,10 @@ concord-client/dist/
 concord-client/dist-ssr/
 *.local
 
+# Uploads
+uploads/
+concord/uploads/
+
 # Tauri / Rust build artifacts
 concord-client/src-tauri/target/
 concord-client/src-tauri/gen/

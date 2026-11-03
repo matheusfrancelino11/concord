@@ -110,7 +110,7 @@ export const MessageFeed: React.FC<MessageFeedProps> = ({
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-[#949ba4] gap-2 select-none">
         <Loader2 className="w-8 h-8 animate-spin text-[#5865F2]" />
-        <span className="text-sm font-medium">Loading messages...</span>
+        <span className="text-sm font-medium">Carregando mensagens...</span>
       </div>
     );
   }
@@ -125,7 +125,7 @@ export const MessageFeed: React.FC<MessageFeedProps> = ({
       {isLoadingOlder && (
         <div className="py-2 flex items-center justify-center text-[#949ba4] gap-2">
           <Loader2 className="w-4 h-4 animate-spin text-[#5865F2]" />
-          <span className="text-xs">Loading older messages...</span>
+          <span className="text-xs">Carregando mensagens anteriores...</span>
         </div>
       )}
 
@@ -136,10 +136,10 @@ export const MessageFeed: React.FC<MessageFeedProps> = ({
             <Hash className="w-10 h-10" />
           </div>
           <h2 className="text-3xl font-bold text-[#f2f3f5]">
-            Welcome to #{channelName || "general"}!
+            Boas-vindas ao #{channelName || "geral"}!
           </h2>
           <p className="text-sm text-[#949ba4] mt-1">
-            This is the start of the #{channelName || "general"} channel.
+            Este é o início do canal #{channelName || "geral"}.
           </p>
         </div>
       )}

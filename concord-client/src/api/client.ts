@@ -25,6 +25,7 @@ import {
   CreateBanPayload,
   UpdateGuildPayload,
   Relationship,
+  UploadResponse,
 } from "../types";
 
 // Base URL configuration with Vite env fallback
@@ -547,6 +548,17 @@ export const api = {
     getToken: async (channelId: string): Promise<VoiceTokenResponse> => {
       return request<VoiceTokenResponse>(`/channels/${channelId}/voice/token`, {
         method: "POST",
+      });
+    },
+  },
+
+  uploads: {
+    upload: async (file: File): Promise<UploadResponse> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return request<UploadResponse>("/uploads", {
+        method: "POST",
+        body: formData,
       });
     },
   },

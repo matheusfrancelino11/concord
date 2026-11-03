@@ -36,7 +36,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({
         })
         .catch((err) => {
           console.error("Failed to generate invite:", err);
-          setError("Failed to create invite code.");
+          setError("Falha ao criar código de convite.");
         })
         .finally(() => {
           setIsLoading(false);
@@ -70,13 +70,13 @@ export const InviteModal: React.FC<InviteModalProps> = ({
           <div className="flex items-center justify-between pb-3">
             <Dialog.Title className="text-lg font-bold text-[#f2f3f5] flex items-center gap-2">
               <Link className="w-5 h-5 text-[#5865F2]" />
-              Invite Friends to {currentGuild?.name || "Server"}
+              Convidar amigos para {currentGuild?.name || "Servidor"}
             </Dialog.Title>
             <Dialog.Close asChild>
               <button
                 type="button"
                 className="text-[#949ba4] hover:text-white transition p-1 cursor-pointer rounded"
-                aria-label="Close"
+                aria-label="Fechar"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -84,13 +84,13 @@ export const InviteModal: React.FC<InviteModalProps> = ({
           </div>
 
           <p className="text-xs text-[#949ba4] mb-4">
-            Share this invite code or link with your friends to let them join this server immediately.
+            Compartilhe este código ou link com seus amigos para que eles entrem neste servidor imediatamente.
           </p>
 
           {isLoading ? (
             <div className="py-8 flex flex-col items-center justify-center gap-2 text-[#949ba4]">
               <Loader2 className="w-6 h-6 animate-spin text-[#5865F2]" />
-              <span className="text-xs">Generating invite code...</span>
+              <span className="text-xs">Gerando código de convite...</span>
             </div>
           ) : error ? (
             <div className="p-3 bg-[#f23f43]/10 border border-[#f23f43]/30 rounded text-[#f23f43] text-xs">
@@ -101,7 +101,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({
               {/* Invite Code Section */}
               <div>
                 <label className="block text-[11px] font-bold text-[#b5bac1] uppercase tracking-wider mb-1.5">
-                  Invite Code
+                  Código de Convite
                 </label>
                 <div className="flex items-center gap-2 bg-[#1e1f22] p-2 rounded border border-[#2b2d31]">
                   <span className="font-mono text-sm text-[#f2f3f5] tracking-widest font-bold px-2 select-all flex-1">
@@ -115,12 +115,12 @@ export const InviteModal: React.FC<InviteModalProps> = ({
                     {copied ? (
                       <>
                         <Check className="w-3.5 h-3.5" />
-                        <span>Copied</span>
+                        <span>Copiado!</span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Code</span>
+                        <span>Copiar Código</span>
                       </>
                     )}
                   </button>
@@ -130,7 +130,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({
               {/* Shareable Link preview */}
               <div>
                 <label className="block text-[11px] font-bold text-[#b5bac1] uppercase tracking-wider mb-1.5">
-                  Shareable Link
+                  Link de Compartilhamento
                 </label>
                 <div className="flex items-center justify-between text-xs text-[#949ba4] bg-[#1e1f22] p-2 rounded border border-[#2b2d31]">
                   <span className="truncate pr-2 font-mono">{inviteLink}</span>
@@ -139,13 +139,13 @@ export const InviteModal: React.FC<InviteModalProps> = ({
                     onClick={handleCopyLink}
                     className="text-[#5865F2] hover:underline shrink-0 text-xs font-medium cursor-pointer"
                   >
-                    Copy Link
+                    Copiar Link
                   </button>
                 </div>
               </div>
 
               <div className="text-[11px] text-[#949ba4] pt-1">
-                Your invite code will expire in 24 hours with unlimited uses.
+                Seu código de convite expira em 24 horas e possui usos ilimitados.
               </div>
             </div>
           )}
@@ -156,7 +156,7 @@ export const InviteModal: React.FC<InviteModalProps> = ({
               onClick={() => onOpenChange(false)}
               className="px-4 py-2 bg-[#35373c] hover:bg-[#404249] text-white text-sm font-medium rounded transition cursor-pointer"
             >
-              Done
+              Concluído
             </button>
           </div>
         </Dialog.Content>

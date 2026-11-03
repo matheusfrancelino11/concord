@@ -48,13 +48,13 @@ export const VoiceControls: React.FC = () => {
               }`}
             >
               {isConnected
-                ? "Voice Connected"
+                ? "Voz Conectada"
                 : isConnecting
-                ? "RTC Connecting..."
-                : "Connection Error"}
+                ? "Conectando RTC..."
+                : "Erro de Conexão"}
             </span>
             <span className="text-[11px] text-[#949ba4] leading-tight truncate">
-              {activeVoiceChannelName || "Voice Channel"} / {serverName}
+              {activeVoiceChannelName || "Canal de Voz"} / {serverName}
             </span>
           </div>
         </div>
@@ -65,8 +65,8 @@ export const VoiceControls: React.FC = () => {
             <button
               type="button"
               onClick={toggleScreenShare}
-              title={isScreenSharing ? "Stop Sharing Screen" : "Share Your Screen"}
-              aria-label={isScreenSharing ? "Stop Sharing Screen" : "Share Your Screen"}
+              title={isScreenSharing ? "Parar Transmissão" : "Compartilhar Tela"}
+              aria-label={isScreenSharing ? "Parar Transmissão" : "Compartilhar Tela"}
               className={`p-1.5 rounded transition cursor-pointer ${
                 isScreenSharing
                   ? "bg-[#5865F2] hover:bg-[#4752c4] text-white"
@@ -84,8 +84,8 @@ export const VoiceControls: React.FC = () => {
           <button
             type="button"
             onClick={leaveVoiceChannel}
-            title="Disconnect from voice"
-            aria-label="Disconnect from voice"
+            title="Desconectar da voz"
+            aria-label="Desconectar da voz"
             className="p-1.5 rounded bg-[#2b2d31] hover:bg-[#f23f43] hover:text-white text-[#dbdee1] transition cursor-pointer"
           >
             <PhoneOff className="w-4 h-4" />

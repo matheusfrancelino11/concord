@@ -53,15 +53,15 @@ const StreamPreviewCard: React.FC<{
           <Tv className="w-5 h-5" />
         </div>
         <span className="text-xs font-semibold text-white drop-shadow">
-          Watch Stream
+          Assistir Transmissão
         </span>
       </div>
       <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#f23f43] text-white text-[10px] font-bold">
         <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-        <span>LIVE</span>
+        <span>AO VIVO</span>
       </div>
       <div className="absolute bottom-2 left-2 right-2 truncate text-xs font-semibold text-white drop-shadow bg-black/60 px-2 py-1 rounded">
-        {share.isLocal ? "Your Stream" : `${share.userName}'s Stream`}
+        {share.isLocal ? "Sua Transmissão" : `Transmissão de ${share.userName}`}
       </div>
     </div>
   );
@@ -117,14 +117,14 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
               {activeScreenShares.length > 0 && (
                 <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#f23f43] text-white text-[10px] font-bold">
                   <Tv className="w-3 h-3" />
-                  <span>{activeScreenShares.length} LIVE</span>
+                  <span>{activeScreenShares.length} AO VIVO</span>
                 </div>
               )}
             </div>
             <span className="text-xs text-[#949ba4]">
               {channelParticipants.length === 1
-                ? "1 person in voice"
-                : `${channelParticipants.length} people in voice`}
+                ? "1 pessoa conectada"
+                : `${channelParticipants.length} pessoas conectadas`}
             </span>
           </div>
         </div>
@@ -136,7 +136,7 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
               <button
                 type="button"
                 onClick={toggleScreenShare}
-                title={isScreenSharing ? "Stop Sharing Screen" : "Share Your Screen"}
+                title={isScreenSharing ? "Parar Transmissão" : "Compartilhar Tela"}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition cursor-pointer ${
                   isScreenSharing
                     ? "bg-[#5865F2] hover:bg-[#4752c4] text-white shadow-md"
@@ -148,14 +148,14 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                 ) : (
                   <MonitorUp className="w-3.5 h-3.5" />
                 )}
-                <span>{isScreenSharing ? "Streaming" : "Share Screen"}</span>
+                <span>{isScreenSharing ? "Transmitindo" : "Compartilhar Tela"}</span>
               </button>
 
               {/* Mute Button */}
               <button
                 type="button"
                 onClick={toggleMute}
-                title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
+                title={isMuted ? "Desmutar Microfone" : "Mutar Microfone"}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition cursor-pointer ${
                   isMuted
                     ? "bg-[#f23f43] text-white"
@@ -163,14 +163,14 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                 }`}
               >
                 {isMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                <span>{isMuted ? "Muted" : "Mute"}</span>
+                <span>{isMuted ? "Mutado" : "Mutar"}</span>
               </button>
 
               {/* Deafen Button */}
               <button
                 type="button"
                 onClick={toggleDeafen}
-                title={isDeafened ? "Undeafen Audio" : "Deafen Audio"}
+                title={isDeafened ? "Desensurdecer Áudio" : "Ensurdecer Áudio"}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition cursor-pointer ${
                   isDeafened
                     ? "bg-[#f23f43] text-white"
@@ -178,18 +178,18 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                 }`}
               >
                 <Headphones className="w-3.5 h-3.5" />
-                <span>{isDeafened ? "Deafened" : "Deafen"}</span>
+                <span>{isDeafened ? "Ensurdecido" : "Ensurdecer"}</span>
               </button>
 
               {/* Disconnect Button */}
               <button
                 type="button"
                 onClick={leaveVoiceChannel}
-                title="Disconnect"
+                title="Desconectar"
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-[#f23f43] hover:bg-[#da373b] text-white transition cursor-pointer ml-1"
               >
                 <PhoneOff className="w-3.5 h-3.5" />
-                <span>Disconnect</span>
+                <span>Desconectar</span>
               </button>
             </div>
           ) : (
@@ -203,7 +203,7 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
               className="flex items-center gap-2 px-4 py-2 rounded bg-[#23a55a] hover:bg-[#1f9250] text-white font-semibold text-xs transition cursor-pointer shadow-md"
             >
               <LogIn className="w-4 h-4" />
-              <span>Join Voice</span>
+              <span>Entrar na Voz</span>
             </button>
           )}
         </div>
@@ -238,10 +238,10 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                     className="h-24 w-40 rounded-lg bg-black border border-[#5865F2] overflow-hidden shrink-0 relative hover:opacity-90 transition cursor-pointer"
                   >
                     <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-[#f23f43] text-white text-[9px] font-bold">
-                      LIVE
+                      AO VIVO
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white bg-black/40">
-                      Watch {share.isLocal ? "Your Stream" : share.userName}
+                      Assistir {share.isLocal ? "Sua Transmissão" : `Transmissão de ${share.userName}`}
                     </div>
                   </button>
                 ))}
@@ -253,7 +253,7 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                   vs.member?.nick ||
                   vsUser?.global_name ||
                   vsUser?.username ||
-                  "User";
+                  "Usuário";
                 const isOwner = currentGuild && vs.user_id === currentGuild.owner_id;
                 const isSelf = user && vs.user_id === user.id;
                 const speaking = isUserSpeaking(vs.user_id);
@@ -297,7 +297,7 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                     </div>
                     <span className="text-xs text-white truncate max-w-full text-center font-medium">
                       {vsName}
-                      {isSelf && " (You)"}
+                      {isSelf && " (Você)"}
                     </span>
                   </div>
                 );
@@ -314,9 +314,9 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                 <div className="w-20 h-20 rounded-full bg-[#2b2d31] flex items-center justify-center text-[#80848e] mb-4">
                   <Volume2 className="w-10 h-10" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Nobody is here yet</h3>
+                <h3 className="text-xl font-bold text-white mb-2">Ninguém está aqui ainda</h3>
                 <p className="text-sm text-[#949ba4] max-w-sm mb-6">
-                  This channel is quiet. Click "Join Voice" to connect your microphone and talk with your friends.
+                  Este canal está silencioso. Clique em "Entrar no Canal de Voz" para conectar seu microfone e conversar com seus amigos.
                 </p>
                 {!isConnectedToThisChannel && (
                   <button
@@ -329,7 +329,7 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                     className="flex items-center gap-2 px-6 py-2.5 rounded bg-[#23a55a] hover:bg-[#1f9250] text-white font-semibold text-sm transition cursor-pointer shadow-lg"
                   >
                     <LogIn className="w-4 h-4" />
-                    <span>Join Voice Channel</span>
+                    <span>Entrar no Canal de Voz</span>
                   </button>
                 )}
               </div>
@@ -373,10 +373,10 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                         <div
                           onClick={() => setFocusedScreenShareUserId(vs.user_id)}
                           className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#f23f43] hover:bg-[#da373b] text-white text-[10px] font-bold cursor-pointer transition shadow"
-                          title="Watch Stream"
+                          title="Assistir Transmissão"
                         >
                           <Tv className="w-3 h-3" />
-                          <span>LIVE</span>
+                          <span>AO VIVO</span>
                         </div>
                       )}
 
@@ -418,10 +418,10 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                       <div className="flex items-center gap-1.5 max-w-full px-2">
                         <span className="text-sm font-semibold text-white truncate text-center">
                           {vsName}
-                          {isSelf && " (You)"}
+                          {isSelf && " (Você)"}
                         </span>
                         {isOwner && (
-                          <span title="Server Owner">
+                          <span title="Dono do Servidor">
                             <Crown className="w-3.5 h-3.5 text-[#f0b232] shrink-0" />
                           </span>
                         )}

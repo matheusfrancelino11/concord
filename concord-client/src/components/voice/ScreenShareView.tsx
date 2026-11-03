@@ -84,11 +84,11 @@ export const ScreenShareView: React.FC<ScreenShareViewProps> = ({
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#f23f43] text-white text-[11px] font-bold tracking-wider uppercase">
             <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            <span>LIVE</span>
+            <span>AO VIVO</span>
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-white drop-shadow leading-tight">
-              {screenShare.isLocal ? "Your Screen" : `${screenShare.userName}'s Stream`}
+              {screenShare.isLocal ? "Sua Tela" : `Transmissão de ${screenShare.userName}`}
             </span>
             {channelName && (
               <span className="text-[11px] text-[#dbdee1]/80 leading-tight">
@@ -104,11 +104,11 @@ export const ScreenShareView: React.FC<ScreenShareViewProps> = ({
             <button
               type="button"
               onClick={toggleScreenShare}
-              title="Stop Sharing Screen"
+              title="Parar Compartilhamento"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#f23f43] hover:bg-[#da373b] text-white text-xs font-semibold transition cursor-pointer shadow-md mr-1"
             >
               <MonitorOff className="w-3.5 h-3.5" />
-              <span>Stop Sharing</span>
+              <span>Parar Transmissão</span>
             </button>
           )}
 
@@ -150,7 +150,7 @@ export const ScreenShareView: React.FC<ScreenShareViewProps> = ({
             <button
               type="button"
               onClick={onMinimize}
-              title="Back to Grid View"
+              title="Voltar para a Grade"
               className="p-2 rounded bg-black/50 hover:bg-black/75 text-white/90 hover:text-white transition cursor-pointer backdrop-blur-sm"
             >
               <Tv className="w-4 h-4" />
@@ -160,7 +160,7 @@ export const ScreenShareView: React.FC<ScreenShareViewProps> = ({
           <button
             type="button"
             onClick={handleToggleFullscreen}
-            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
             className="p-2 rounded bg-black/50 hover:bg-black/75 text-white/90 hover:text-white transition cursor-pointer backdrop-blur-sm"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -172,7 +172,7 @@ export const ScreenShareView: React.FC<ScreenShareViewProps> = ({
       <div className="absolute bottom-2 left-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
         <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-black/60 text-[#dbdee1] text-[10px] font-medium backdrop-blur-sm">
           <Radio className="w-3 h-3 text-[#23a55a]" />
-          <span>LiveKit WebRTC Stream (720p/1080p 30fps)</span>
+          <span>Transmissão WebRTC LiveKit</span>
         </div>
       </div>
     </div>

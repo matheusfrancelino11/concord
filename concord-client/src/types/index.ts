@@ -456,5 +456,13 @@ export interface TypingStartPayload {
   timestamp?: number;
 }
 
+export interface UploadResponse {
+  id: Snowflake;
+  url: string;
+  filename: string;
+  content_type: string;
+  size: number;
+}
+
 export type TypingPayload = TypingStartPayload;
 

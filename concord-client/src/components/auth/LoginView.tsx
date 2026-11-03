@@ -56,9 +56,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToRegister }) =>
         <div className="flex flex-col items-center mb-4">
           <ConcordLogo size={64} variant="full" animated={true} />
         </div>
-        <h1 className="text-2xl font-bold text-center text-[#f2f3f5]">Welcome back!</h1>
+        <h1 className="text-2xl font-bold text-center text-[#f2f3f5]">Boas-vindas de volta!</h1>
         <p className="text-[#949ba4] text-center text-sm mt-1 mb-6">
-          We're so excited to see you again!
+          Estamos muito animados em ver você novamente!
         </p>
 
         {activeError && (
@@ -71,7 +71,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToRegister }) =>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="text-xs font-bold text-[#b5bac1] uppercase tracking-wider mb-2 block">
-              Email <span className="text-[#f23f43]">*</span>
+              E-mail <span className="text-[#f23f43]">*</span>
             </label>
             <input
               type="email"
@@ -83,13 +83,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToRegister }) =>
                 if (validationError) setValidationError(null);
               }}
               className="w-full bg-[#1e1f22] border border-[#1e1f22] focus:border-[#5865F2] focus:outline-none rounded-[3px] px-3 py-2.5 text-sm text-[#f2f3f5] placeholder-zinc-500 transition-colors"
-              placeholder="name@example.com"
+              placeholder="nome@exemplo.com"
             />
           </div>
 
           <div>
             <label className="text-xs font-bold text-[#b5bac1] uppercase tracking-wider mb-2 block">
-              Password <span className="text-[#f23f43]">*</span>
+              Senha <span className="text-[#f23f43]">*</span>
             </label>
             <input
               type="password"
@@ -107,21 +107,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToRegister }) =>
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#5865F2] hover:bg-[#4752c4] active:bg-[#3c45a5] text-white font-medium py-2.5 rounded-[3px] text-sm transition-colors mt-6 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[#5865F2] hover:bg-[#4752c4] active:bg-[#3c45a5] text-white font-medium py-2.5 rounded-[3px] text-sm transition-colors mt-6 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Logging in...</span>
+                <span>Entrando...</span>
               </>
             ) : (
-              "Log In"
+              "Entrar"
             )}
           </button>
         </form>
 
         <div className="text-xs text-[#949ba4] mt-4">
-          Need an account?{" "}
+          Precisa de uma conta?{" "}
           <button
             type="button"
             onClick={() => {
@@ -130,7 +130,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToRegister }) =>
             }}
             className="text-[#00a8fc] hover:underline font-normal cursor-pointer"
           >
-            Register
+            Registre-se
           </button>
         </div>
       </div>

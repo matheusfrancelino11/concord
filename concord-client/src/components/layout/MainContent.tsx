@@ -228,8 +228,8 @@ export const MainContent: React.FC<MainContentProps> = ({
           <span className="text-xs text-[#949ba4] truncate max-w-lg">
             {currentChannel?.topic ||
               (isVoice
-                ? "Voice Channel (LiveKit SFU Audio)"
-                : "Welcome to the beginning of this channel!")}
+                ? "Canal de Voz"
+                : "Boas-vindas ao início deste canal!")}
           </span>
         </div>
 
@@ -307,7 +307,7 @@ export const MainContent: React.FC<MainContentProps> = ({
           <button
             type="button"
             onClick={onToggleMemberList}
-            title={showMemberList ? "Hide Member List" : "Show Member List"}
+            title={showMemberList ? "Ocultar lista de membros" : "Mostrar lista de membros"}
             className={`p-1 rounded hover:bg-[#35373c] transition cursor-pointer ${
               showMemberList ? "text-white" : "text-[#b5bac1] hover:text-white"
             }`}
@@ -342,7 +342,7 @@ export const MainContent: React.FC<MainContentProps> = ({
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-[#949ba4]">
-              <p>No channel selected.</p>
+              <p>Nenhum canal selecionado.</p>
             </div>
           )}
         </div>

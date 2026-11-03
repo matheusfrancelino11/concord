@@ -68,11 +68,11 @@ export const ChannelList: React.FC<ChannelListProps> = ({
 
   const handleDeleteGuild = async () => {
     if (!currentGuild) return;
-    if (window.confirm(`Are you sure you want to delete server "${currentGuild.name}"? This cannot be undone.`)) {
+    if (window.confirm(`Tem certeza que deseja excluir o servidor "${currentGuild.name}"? Esta ação não pode ser desfeita.`)) {
       try {
         await deleteGuild(currentGuild.id);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Failed to delete server";
+        const message = err instanceof Error ? err.message : "Falha ao excluir servidor";
         alert(message);
       }
     }
@@ -80,11 +80,11 @@ export const ChannelList: React.FC<ChannelListProps> = ({
 
   const handleDeleteChannel = async (channelId: string, channelName: string) => {
     if (!currentGuildId) return;
-    if (window.confirm(`Are you sure you want to delete channel #${channelName}?`)) {
+    if (window.confirm(`Tem certeza que deseja excluir o canal #${channelName}?`)) {
       try {
         await deleteChannel(channelId, currentGuildId);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Failed to delete channel";
+        const message = err instanceof Error ? err.message : "Falha ao excluir canal";
         alert(message);
       }
     }
@@ -147,7 +147,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                       onClick={handleDeleteGuild}
                       className="flex items-center justify-between px-2.5 py-2 rounded text-[#f23f43] hover:bg-[#f23f43] hover:text-white cursor-pointer transition-colors outline-none"
                     >
-                      <span>Delete Server</span>
+                      <span>Excluir Servidor</span>
                       <Trash2 className="w-4 h-4" />
                     </DropdownMenu.Item>
                   </>
@@ -308,11 +308,11 @@ export const ChannelList: React.FC<ChannelListProps> = ({
             {/* Text Channels */}
             <div>
               <div className="flex items-center justify-between px-2 pb-1 text-[12px] font-bold tracking-wider text-[#949ba4] uppercase hover:text-[#dbdee1] group">
-                <span className="flex items-center gap-1">Text Channels</span>
+                <span className="flex items-center gap-1">Canais de Texto</span>
                 <button
                   type="button"
                   onClick={() => onOpenCreateChannel(0)}
-                  aria-label="Create text channel"
+                  aria-label="Criar canal de texto"
                   className="opacity-0 group-hover:opacity-100 text-[#949ba4] hover:text-white transition cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
@@ -371,7 +371,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                               e.stopPropagation();
                               handleDeleteChannel(channel.id, channel.name);
                             }}
-                            aria-label={`Delete ${channel.name}`}
+                            aria-label={`Excluir ${channel.name}`}
                             className="opacity-0 group-hover:opacity-100 p-1 hover:text-[#f23f43] text-[#949ba4] transition cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -387,11 +387,11 @@ export const ChannelList: React.FC<ChannelListProps> = ({
             {/* Voice Channels */}
             <div>
               <div className="flex items-center justify-between px-2 pb-1 text-[12px] font-bold tracking-wider text-[#949ba4] uppercase hover:text-[#dbdee1] group">
-                <span className="flex items-center gap-1">Voice Channels</span>
+                <span className="flex items-center gap-1">Canais de Voz</span>
                 <button
                   type="button"
                   onClick={() => onOpenCreateChannel(2)}
-                  aria-label="Create voice channel"
+                  aria-label="Criar canal de voz"
                   className="opacity-0 group-hover:opacity-100 text-[#949ba4] hover:text-white transition cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
@@ -451,7 +451,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                               e.stopPropagation();
                               handleDeleteChannel(channel.id, channel.name);
                             }}
-                            aria-label={`Delete ${channel.name}`}
+                            aria-label={`Excluir ${channel.name}`}
                             className="opacity-0 group-hover:opacity-100 p-1 hover:text-[#f23f43] text-[#949ba4] transition cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -468,7 +468,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                               vs.member?.nick ||
                               vsUser?.global_name ||
                               vsUser?.username ||
-                              "User";
+                              "Usuário";
                             const speaking = isUserSpeaking(vs.user_id);
                             return (
                               <div
