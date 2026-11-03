@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useGuildStore } from "../../stores/guildStore";
 import { Plus } from "lucide-react";
 import { ConcordLogo } from "../common/ConcordLogo";
@@ -11,6 +11,20 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
   const { guilds, selectedGuildId, activeGuildId, selectGuild } = useGuildStore();
   const currentGuildId = selectedGuildId || activeGuildId;
+  const [winkingTimestamp, setWinkingTimestamp] = useState<number | null>(null);
+
+  const handleHomeClick = () => {
+    selectGuild("");
+    setWinkingTimestamp(Date.now());
+  };
+
+  useEffect(() => {
+    if (!winkingTimestamp) return;
+    const timer = setTimeout(() => {
+      setWinkingTimestamp(null);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [winkingTimestamp]);
 
   const getInitials = (name: string): string => {
     const parts = name.trim().split(/\s+/);
@@ -34,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
               />
               <button
                 type="button"
-                onClick={() => selectGuild("")}
+                onClick={handleHomeClick}
                 aria-label="Direct Messages"
                 className={`w-12 h-12 flex items-center justify-center transition-all duration-200 cursor-pointer overflow-hidden ${
                   currentGuildId === null
@@ -43,9 +57,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
                 }`}
               >
                 <ConcordLogo
+                  key={winkingTimestamp || "idle"}
                   size={28}
                   variant="mascot"
                   animated={false}
+                  isWinking={Boolean(winkingTimestamp)}
                   eyeColor={currentGuildId === null ? "#1FCE66" : "#2b2d31"}
                   bodyColor="#FFFFFF"
                 />

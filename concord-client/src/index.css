@@ -78,6 +78,70 @@
   }
 }
 
+/* Click-triggered snappy wink & pop animations */
+@keyframes concord-click-wink {
+  0% {
+    transform: scaleY(1);
+  }
+  28% {
+    transform: scaleY(0.08);
+  }
+  48% {
+    transform: scaleY(0.08);
+  }
+  75% {
+    transform: scaleY(1.15);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes concord-click-smirk {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  35% {
+    transform: rotate(6deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(-1deg) scale(0.98);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes concord-pop {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(0.86);
+  }
+  55% {
+    transform: scale(1.14);
+  }
+  78% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-concord-click-wink {
+  animation: concord-click-wink 0.65s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.animate-concord-click-smirk {
+  animation: concord-click-smirk 0.65s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.animate-concord-pop {
+  animation: concord-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
 @keyframes concord-smirk {
   0%, 100% {
     transform: rotate(0deg) scale(1);
