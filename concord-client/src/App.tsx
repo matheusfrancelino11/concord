@@ -19,6 +19,7 @@ import {
 import { LoginView } from "./components/auth/LoginView";
 import { RegisterView } from "./components/auth/RegisterView";
 import { AppLayout } from "./components/layout/AppLayout";
+import { ConcordLoadingScreen } from "./components/common/ConcordLoadingScreen";
 import { Loader2 } from "lucide-react";
 
 export const App: React.FC = () => {
@@ -376,14 +377,9 @@ export const App: React.FC = () => {
     };
   }, [isAuthenticated]);
 
-  // Loading state on startup
+  // Loading state on startup with animated Concord mascot
   if (authLoading) {
-    return (
-      <div className="h-screen w-screen bg-[#1e1f22] flex flex-col items-center justify-center gap-4 text-white select-none">
-        <Loader2 className="w-10 h-10 animate-spin text-[#5865F2]" />
-        <p className="text-sm font-medium text-[#949ba4]">Connecting to Concord...</p>
-      </div>
-    );
+    return <ConcordLoadingScreen message="Conectando ao Concord..." />;
   }
 
   // Unauthenticated: render Login or Register

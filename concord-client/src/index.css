@@ -40,3 +40,79 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Concord Mascot Animations */
+@keyframes concord-breathe {
+  0%, 100% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(1.025) translateY(-3px);
+  }
+}
+
+@keyframes concord-bounce-squish {
+  0%, 100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  25% {
+    transform: translateY(-16px) scale(0.96, 1.05);
+  }
+  50% {
+    transform: translateY(0) scale(1.06, 0.94);
+  }
+  70% {
+    transform: translateY(-6px) scale(0.98, 1.02);
+  }
+  85% {
+    transform: translateY(0) scale(1.02, 0.98);
+  }
+}
+
+@keyframes concord-wink {
+  0%, 42%, 48%, 100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(0.12);
+  }
+}
+
+@keyframes concord-smirk {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(2.5deg) scale(1.03);
+  }
+}
+
+@keyframes concord-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 25px rgba(33, 211, 102, 0.25), 0 0 60px rgba(31, 206, 102, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 45px rgba(33, 211, 102, 0.5), 0 0 90px rgba(31, 206, 102, 0.25);
+  }
+}
+
+.animate-concord-breathe {
+  animation: concord-breathe 3.2s ease-in-out infinite;
+}
+
+.animate-concord-bounce {
+  animation: concord-bounce-squish 2s ease-in-out infinite;
+}
+
+.animate-concord-wink {
+  animation: concord-wink 3.8s ease-in-out infinite;
+}
+
+.animate-concord-smirk {
+  animation: concord-smirk 3.2s ease-in-out infinite;
+}
+
+.animate-concord-glow {
+  animation: concord-glow-pulse 2.8s ease-in-out infinite;
+}
+

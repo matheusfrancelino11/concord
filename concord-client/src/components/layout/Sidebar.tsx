@@ -1,6 +1,7 @@
 import React from "react";
 import { useGuildStore } from "../../stores/guildStore";
-import { Plus, MessageSquare } from "lucide-react";
+import { Plus } from "lucide-react";
+import { ConcordLogo } from "../common/ConcordLogo";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
 interface SidebarProps {
@@ -35,13 +36,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
                 type="button"
                 onClick={() => selectGuild("")}
                 aria-label="Direct Messages"
-                className={`w-12 h-12 flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                className={`w-12 h-12 flex items-center justify-center transition-all duration-200 cursor-pointer overflow-hidden ${
                   currentGuildId === null
-                    ? "rounded-[16px] bg-[#5865F2] text-white"
-                    : "rounded-[24px] bg-[#313338] text-[#dbdee1] group-hover:rounded-[16px] group-hover:bg-[#5865F2] group-hover:text-white"
+                    ? "rounded-[16px] bg-[#1FCE66] text-white shadow-lg shadow-[#1FCE66]/20"
+                    : "rounded-[24px] bg-[#313338] text-[#dbdee1] hover:rounded-[16px] hover:bg-[#1FCE66] hover:text-white"
                 }`}
               >
-                <MessageSquare className="w-6 h-6" />
+                <ConcordLogo
+                  size={28}
+                  variant="mascot"
+                  animated={false}
+                  eyeColor={currentGuildId === null ? "#1FCE66" : "#2b2d31"}
+                  bodyColor="#FFFFFF"
+                />
               </button>
             </div>
           </Tooltip.Trigger>

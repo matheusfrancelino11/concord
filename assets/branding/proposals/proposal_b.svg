@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Proposta B: Mascote Travesso - Fundo Verde Vivo -->
+  <rect width="512" height="512" rx="128" fill="#35A968"/>
+  
+  <!-- Silhueta Branca do Mascote (Formato dinâmico com orelhinhas expressivas em chifrezinho suave e bochechas marcadas) -->
+  <path fill="#FFFFFF" d="
+    M 256 120
+    C 290 120, 318 100, 345 80
+    C 360 70, 375 88, 368 112
+    C 362 135, 368 152, 395 180
+    C 430 215, 436 280, 412 335
+    C 388 388, 330 415, 256 415
+    C 182 415, 124 388, 100 335
+    C 76 280, 82 215, 117 180
+    C 144 152, 150 135, 144 112
+    C 137 88, 152 70, 167 80
+    C 194 100, 222 120, 256 120
+    Z
+  "/>
+
+  <!-- Elementos Faciais (Recorte vazado na cor de fundo #35A968) -->
+  <!-- Olho Esquerdo: Redondo, arregalado, bem vivo -->
+  <ellipse cx="192" cy="245" rx="26" ry="34" fill="#35A968"/>
+  <!-- Brilho no olho esquerdo (ponto branco de vivacidade) -->
+  <circle cx="200" cy="235" r="9" fill="#FFFFFF"/>
+
+  <!-- Olho Direito: Piscadinha conspiratória / Semicerrado maroto -->
+  <path d="M 292 254 Q 325 220 354 246" fill="none" stroke="#35A968" stroke-width="18" stroke-linecap="round"/>
+  
+  <!-- Sobrancelha Esquerda: Arqueada para cima -->
+  <path d="M 170 190 Q 195 174 220 186" fill="none" stroke="#35A968" stroke-width="13" stroke-linecap="round"/>
+
+  <!-- Sorriso Maroto Aberto e Assimétrico: Destaque para o dente/canto travesso -->
+  <path d="
+    M 184 308
+    Q 240 375, 336 295
+    Q 265 315, 184 308
+    Z
+  " fill="#35A968"/>
+
+  <!-- Vinco superior da bochecha levantada no sorriso -->
+  <path d="M 334 285 Q 348 296 342 312" fill="none" stroke="#35A968" stroke-width="12" stroke-linecap="round"/>
+</svg>

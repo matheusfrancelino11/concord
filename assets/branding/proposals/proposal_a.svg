@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Proposta A: Mascote Clássico - Fundo Verde Vivo -->
+  <rect width="512" height="512" rx="128" fill="#35A968"/>
+  
+  <!-- Silhueta Branca do Mascote -->
+  <!-- Formato orgânico arredondado, com suaves projeções laterais de headset/orelhas amigáveis -->
+  <path fill="#FFFFFF" d="
+    M 170 145
+    C 200 135, 312 135, 342 145
+    C 400 165, 424 220, 424 280
+    C 424 330, 395 385, 335 395
+    C 295 402, 217 402, 177 395
+    C 117 385, 88 330, 88 280
+    C 88 220, 112 165, 170 145
+    Z
+  "/>
+  
+  <!-- Orelhas/Nubs superiores fofos que integram a silhueta -->
+  <path fill="#FFFFFF" d="
+    M 130 190 C 110 135, 160 110, 185 145 Z
+    M 382 190 C 402 135, 352 110, 327 145 Z
+  "/>
+
+  <!-- Elementos Faciais (Recorte vazado na cor do fundo #35A968) -->
+  <!-- Olho Esquerdo: Grande e expressivo -->
+  <ellipse cx="196" cy="248" rx="24" ry="32" fill="#35A968"/>
+  
+  <!-- Olho Direito: Atento e cúmplice -->
+  <ellipse cx="316" cy="248" rx="24" ry="32" fill="#35A968"/>
+  
+  <!-- Sobrancelha Direita Levantada (Arqueada - expressando malandragem) -->
+  <path d="M 288 198 Q 320 180 348 196" fill="none" stroke="#35A968" stroke-width="12" stroke-linecap="round"/>
+  
+  <!-- Sorriso Maroto Assimétrico: Canto direito levantado com atitude travessa -->
+  <path d="M 188 312 Q 240 338 318 290 Q 328 284 332 292" fill="none" stroke="#35A968" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Covinha do canto do sorriso -->
+  <path d="M 326 278 L 334 296" fill="none" stroke="#35A968" stroke-width="13" stroke-linecap="round"/>
+</svg>

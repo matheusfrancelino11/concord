@@ -1,6 +1,7 @@
 import React, { useState, FormEvent } from "react";
 import { useAuthStore } from "../../stores/authStore";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { ConcordLogo } from "../common/ConcordLogo";
 
 interface LoginViewProps {
   onNavigateToRegister: () => void;
@@ -52,6 +53,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateToRegister }) =>
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#1e1f22] p-4 select-none">
       <div className="w-full max-w-[480px] bg-[#313338] text-white p-8 rounded-lg shadow-2xl border border-[#2b2d31]/60">
+        <div className="flex flex-col items-center mb-4">
+          <ConcordLogo size={64} variant="full" animated={true} />
+        </div>
         <h1 className="text-2xl font-bold text-center text-[#f2f3f5]">Welcome back!</h1>
         <p className="text-[#949ba4] text-center text-sm mt-1 mb-6">
           We're so excited to see you again!
