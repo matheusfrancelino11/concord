@@ -5,6 +5,7 @@ import { useChannelStore } from "./stores/channelStore";
 import { useMessageStore } from "./stores/messageStore";
 import { usePresenceStore } from "./stores/presenceStore";
 import { useVoiceStore } from "./stores/voiceStore";
+import { useSettingsStore } from "./stores/settingsStore";
 import { gateway } from "./gateway/GatewayClient";
 import {
   GatewayEvent,
@@ -62,6 +63,31 @@ export const App: React.FC = () => {
       GatewayEvent.MESSAGE_CREATE,
       (msg) => {
         handleMessageCreate(msg, currentChannelIdRef.current);
+
+        // Desktop native notification
+        const settings = useSettingsStore.getState();
+        const isCurrent = msg.channel_id === currentChannelIdRef.current;
+        const isChannelMuted = Boolean(settings.mutedChannels[msg.channel_id]);
+        const isGuildMuted = Boolean(msg.guild_id && settings.mutedGuilds[msg.guild_id]);
+
+        if (
+          settings.notificationsEnabled &&
+          !isChannelMuted &&
+          !isGuildMuted &&
+          (document.hidden || !isCurrent) &&
+          "Notification" in window &&
+          Notification.permission === "granted"
+        ) {
+          const author = msg.author?.global_name || msg.author?.username || "Concord";
+          try {
+            new Notification(author, {
+              body: msg.content,
+              silent: !settings.soundEnabled,
+            });
+          } catch {
+            // Ignore notification error
+          }
+        }
       }
     );
 
@@ -223,10 +249,12 @@ export const App: React.FC = () => {
     }
   }, [isAuthenticated, fetchGuilds]);
 
-  // 4. Auto-select first guild if none selected
+  // 4. Auto-select remembered guild or first guild
   useEffect(() => {
     if (isAuthenticated && guilds.length > 0 && !currentGuildId) {
-      selectGuild(guilds[0].id);
+      const lastGid = useSettingsStore.getState().lastGuildId;
+      const targetGuild = (lastGid && guilds.find((g) => g.id === lastGid)) || guilds[0];
+      selectGuild(targetGuild.id);
     }
   }, [isAuthenticated, guilds, currentGuildId, selectGuild]);
 
@@ -237,14 +265,17 @@ export const App: React.FC = () => {
     }
   }, [isAuthenticated, currentGuildId, fetchChannels]);
 
-  // 6. Auto-select default #geral or first text channel
+  // 6. Auto-select remembered channel or default #geral
   useEffect(() => {
     if (isAuthenticated && currentGuildId) {
       const guildChannels = channelsByGuild[currentGuildId] || channels || [];
       if (guildChannels.length > 0) {
         const hasValidSelected = guildChannels.some((c) => c.id === currentChannelId);
         if (!hasValidSelected) {
+          const lastCid = useSettingsStore.getState().lastChannelId;
+          const rememberedCh = lastCid && guildChannels.find((c) => c.id === lastCid);
           const defaultCh =
+            rememberedCh ||
             guildChannels.find((c) => c.name === "geral" && c.type === 0) ||
             guildChannels.find((c) => c.type === 0) ||
             guildChannels[0];
@@ -255,6 +286,95 @@ export const App: React.FC = () => {
       }
     }
   }, [isAuthenticated, currentGuildId, channelsByGuild, channels, currentChannelId, selectChannel]);
+
+  // 7. Persist last selected guild and channel
+  useEffect(() => {
+    if (currentGuildId && currentChannelId) {
+      useSettingsStore.getState().setLastLocation(currentGuildId, currentChannelId);
+    }
+  }, [currentGuildId, currentChannelId]);
+
+  // 8. Theme synchronization (dark / light)
+  const theme = useSettingsStore((s) => s.theme);
+  useEffect(() => {
+    if (theme === "light") {
+      document.documentElement.classList.add("light");
+      document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+    }
+  }, [theme]);
+
+  // 9. Global Voice Shortcuts & Push-to-Talk Listener
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let pttActive = false;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing inside input or textarea
+      const targetTag = (e.target as HTMLElement)?.tagName;
+      const isInputActive = targetTag === "INPUT" || targetTag === "TEXTAREA";
+
+      // Shortcuts Ctrl+Shift+M (Mute) & Ctrl+Shift+D (Deafen)
+      if (e.ctrlKey && e.shiftKey && (e.key === "M" || e.key === "m")) {
+        e.preventDefault();
+        useVoiceStore.getState().toggleMute();
+        return;
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === "D" || e.key === "d")) {
+        e.preventDefault();
+        useVoiceStore.getState().toggleDeafen();
+        return;
+      }
+
+      // Push-to-Talk logic
+      if (!isInputActive) {
+        const settings = useSettingsStore.getState();
+        const voice = useVoiceStore.getState();
+        if (
+          settings.inputMode === "push_to_talk" &&
+          voice.activeVoiceChannelId &&
+          voice.currentRoom &&
+          e.code === settings.pushToTalkKey &&
+          !pttActive
+        ) {
+          pttActive = true;
+          voice.currentRoom.localParticipant
+            .setMicrophoneEnabled(true, {
+              deviceId: settings.inputDeviceId !== "default" ? settings.inputDeviceId : undefined,
+              echoCancellation: settings.echoCancellation,
+              noiseSuppression: settings.noiseSuppression,
+              autoGainControl: settings.autoGainControl,
+            })
+            .catch(console.warn);
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const settings = useSettingsStore.getState();
+      const voice = useVoiceStore.getState();
+      if (
+        settings.inputMode === "push_to_talk" &&
+        voice.activeVoiceChannelId &&
+        voice.currentRoom &&
+        e.code === settings.pushToTalkKey &&
+        pttActive
+      ) {
+        pttActive = false;
+        voice.currentRoom.localParticipant.setMicrophoneEnabled(false).catch(console.warn);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [isAuthenticated]);
 
   // Loading state on startup
   if (authLoading) {

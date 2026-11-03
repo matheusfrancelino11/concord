@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useAuthStore } from "../../stores/authStore";
 import { usePresenceStore } from "../../stores/presenceStore";
 import { useVoiceStore } from "../../stores/voiceStore";
 import { UserStatus } from "../../types";
-import { Mic, MicOff, Headphones, LogOut, Check } from "lucide-react";
+import { Mic, MicOff, Headphones, LogOut, Check, Settings as SettingsIcon } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { UserSettingsModal } from "../modals/UserSettingsModal";
 
 const STATUS_CONFIG: Record<
   UserStatus,
@@ -21,6 +22,7 @@ export const UserFooter: React.FC = () => {
   const { user, logout } = useAuthStore();
   const { myStatus, updateMyStatus } = usePresenceStore();
   const { isMuted, isDeafened, toggleMute, toggleDeafen } = useVoiceStore();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const getInitial = (name?: string): string => {
     return name ? name.charAt(0).toUpperCase() : "?";
@@ -122,6 +124,16 @@ export const UserFooter: React.FC = () => {
 
         <button
           type="button"
+          onClick={() => setIsSettingsOpen(true)}
+          title="Configurações de Usuário"
+          aria-label="Configurações de Usuário"
+          className="p-1.5 hover:bg-[#35373c] hover:text-white rounded transition cursor-pointer"
+        >
+          <SettingsIcon className="w-4 h-4" />
+        </button>
+
+        <button
+          type="button"
           onClick={logout}
           title="Log Out"
           aria-label="Log Out"
@@ -130,6 +142,11 @@ export const UserFooter: React.FC = () => {
           <LogOut className="w-4 h-4" />
         </button>
       </div>
+
+      <UserSettingsModal
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+      />
     </footer>
   );
 };

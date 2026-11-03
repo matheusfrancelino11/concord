@@ -1,13 +1,15 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import { useGuildStore } from "../../stores/guildStore";
 import { useChannelStore } from "../../stores/channelStore";
 import { useMessageStore } from "../../stores/messageStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 import { MessageFeed } from "../chat/MessageFeed";
 import { MessageInput } from "../chat/MessageInput";
 import { TypingIndicator } from "../chat/TypingIndicator";
 import { MemberList } from "./MemberList";
 import { VoiceChannelView } from "../voice/VoiceChannelView";
-import { Hash, Volume2, Bell, Pin, Users } from "lucide-react";
+import { Message } from "../../types";
+import { Hash, Volume2, Bell, BellOff, Pin, Users, Search, X } from "lucide-react";
 
 interface MainContentProps {
   onOpenCreateServer: () => void;
@@ -37,18 +39,28 @@ export const MainContent: React.FC<MainContentProps> = ({
   const currentChannel =
     guildChannels.find((c) => c.id === currentChannelId) || guildChannels[0];
 
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  const mutedChannels = useSettingsStore((s) => s.mutedChannels);
+  const toggleMuteChannel = useSettingsStore((s) => s.toggleMuteChannel);
+
   // Fetch messages and clear unread whenever channel changes
   useEffect(() => {
     if (currentChannel && currentChannel.type === 0) {
       fetchMessages(currentChannel.id);
       clearUnread(currentChannel.id);
+      setReplyingTo(null);
+      setSearchQuery("");
     }
   }, [currentChannel?.id, currentChannel?.type, fetchMessages, clearUnread]);
 
   const handleSendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, replyToId?: string) => {
       if (!currentChannel) return;
-      await sendMessage(currentChannel.id, content);
+      await sendMessage(currentChannel.id, content, replyToId);
+      setReplyingTo(null);
     },
     [currentChannel, sendMessage]
   );
@@ -104,8 +116,76 @@ export const MainContent: React.FC<MainContentProps> = ({
         </div>
 
         <div className="flex items-center gap-3 text-[#b5bac1]">
-          <Bell className="w-5 h-5 hover:text-white cursor-pointer transition" />
-          <Pin className="w-5 h-5 hover:text-white cursor-pointer transition" />
+          {/* Search box for messages */}
+          <div className="relative flex items-center">
+            {showSearch ? (
+              <div className="flex items-center bg-[#1e1f22] rounded px-2 py-1 border border-[#1f2023] animate-in fade-in-0">
+                <Search className="w-3.5 h-3.5 text-[#949ba4] mr-1.5 shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar mensagens..."
+                  autoFocus
+                  className="bg-transparent text-xs text-white focus:outline-none w-36 sm:w-48 placeholder-[#80848e]"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="p-0.5 hover:text-white cursor-pointer"
+                  >
+                    <X className="w-3 h-3 text-[#949ba4]" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSearch(false);
+                    setSearchQuery("");
+                  }}
+                  className="ml-1 text-[11px] text-[#949ba4] hover:text-white cursor-pointer"
+                >
+                  ESC
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowSearch(true)}
+                title="Buscar mensagens no canal"
+                className="p-1 hover:text-white hover:bg-[#35373c] rounded transition cursor-pointer"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Mute Channel Button */}
+          {currentChannel && (
+            <button
+              type="button"
+              onClick={() => toggleMuteChannel(currentChannel.id)}
+              title={
+                mutedChannels[currentChannel.id]
+                  ? "Desmutar canal"
+                  : "Silenciar notificações do canal"
+              }
+              className={`p-1 rounded hover:bg-[#35373c] transition cursor-pointer ${
+                mutedChannels[currentChannel.id]
+                  ? "text-[#f23f43]"
+                  : "hover:text-white"
+              }`}
+            >
+              {mutedChannels[currentChannel.id] ? (
+                <BellOff className="w-4 h-4" />
+              ) : (
+                <Bell className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
+          <Pin className="w-4 h-4 hover:text-white cursor-pointer transition hidden sm:block" />
           <button
             type="button"
             onClick={onToggleMemberList}
@@ -114,7 +194,7 @@ export const MainContent: React.FC<MainContentProps> = ({
               showMemberList ? "text-white" : "text-[#b5bac1] hover:text-white"
             }`}
           >
-            <Users className="w-5 h-5" />
+            <Users className="w-4 h-4" />
           </button>
         </div>
       </header>
@@ -129,6 +209,8 @@ export const MainContent: React.FC<MainContentProps> = ({
               <MessageFeed
                 channelId={currentChannel.id}
                 channelName={currentChannel.name}
+                onReply={setReplyingTo}
+                searchQuery={searchQuery}
               />
               <TypingIndicator channelId={currentChannel.id} />
               <MessageInput
@@ -136,6 +218,8 @@ export const MainContent: React.FC<MainContentProps> = ({
                 channelName={currentChannel.name}
                 onSendMessage={handleSendMessage}
                 onTyping={handleTyping}
+                replyingTo={replyingTo}
+                onCancelReply={() => setReplyingTo(null)}
               />
             </>
           ) : (

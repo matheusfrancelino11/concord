@@ -11,9 +11,16 @@ const EMPTY_MESSAGES: Message[] = [];
 interface MessageFeedProps {
   channelId: string;
   channelName: string;
+  onReply?: (message: Message) => void;
+  searchQuery?: string;
 }
 
-export const MessageFeed: React.FC<MessageFeedProps> = ({ channelId, channelName }) => {
+export const MessageFeed: React.FC<MessageFeedProps> = ({
+  channelId,
+  channelName,
+  onReply,
+  searchQuery,
+}) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef<boolean>(true);
   const prevScrollHeightRef = useRef<number | null>(null);
@@ -142,7 +149,12 @@ export const MessageFeed: React.FC<MessageFeedProps> = ({ channelId, channelName
 
       {/* 3. Message List */}
       <div className="space-y-1">
-        {messages.map((message) => {
+        {(searchQuery
+          ? messages.filter((m) =>
+              m.content.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+          : messages
+        ).map((message) => {
           const isAuthor = Boolean(
             user &&
               (message.author?.id === user.id ||
@@ -152,6 +164,9 @@ export const MessageFeed: React.FC<MessageFeedProps> = ({ channelId, channelName
             user && currentGuild && currentGuild.owner_id === user.id
           );
           const canDelete = isAuthor || isGuildOwner;
+          const replyMessage = message.reply_to_id
+            ? messages.find((m) => m.id === message.reply_to_id) || null
+            : null;
 
           return (
             <MessageItem
@@ -161,6 +176,8 @@ export const MessageFeed: React.FC<MessageFeedProps> = ({ channelId, channelName
               canDelete={canDelete}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onReply={onReply}
+              replyMessage={replyMessage}
             />
           );
         })}

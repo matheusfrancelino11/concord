@@ -3,6 +3,7 @@ import { Room, RoomEvent, Track, LocalTrackPublication } from "livekit-client";
 import { VoiceState } from "../types";
 import { api } from "../api/client";
 import { getGatewayClient } from "../gateway/GatewayClient";
+import { useSettingsStore } from "./settingsStore";
 
 export const EMPTY_VOICE_STATES: VoiceState[] = [];
 export const EMPTY_SPEAKING_USERS: string[] = [];
@@ -50,6 +51,10 @@ interface VoiceStoreState {
   setFocusedScreenShareUserId: (userId: string | null) => void;
   getVoiceStatesForChannel: (guildId: string, channelId: string) => VoiceState[];
   isUserSpeaking: (userId: string) => boolean;
+  switchInputDevice: (deviceId: string) => Promise<void>;
+  switchOutputDevice: (deviceId: string) => Promise<void>;
+  syncUserAudio: (userId: string) => void;
+  syncAllAudio: () => void;
 }
 
 export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
@@ -164,7 +169,27 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
           if (isScreenAudio) {
             element.dataset.screenAudio = "true";
           }
-          element.muted = get().isDeafened;
+
+          const settings = useSettingsStore.getState();
+          const isLocallyMuted = settings.isUserLocallyMuted(participant.identity);
+          element.muted = get().isDeafened || isLocallyMuted;
+
+          const userVol = isScreenAudio
+            ? settings.screenShareVolume
+            : settings.getUserVolume(participant.identity);
+          const masterOut = settings.outputVolume / 100;
+          element.volume = Math.max(0, Math.min(1, (userVol / 100) * masterOut));
+
+          // Set sinkId if non-default output device is configured
+          if (
+            settings.outputDeviceId &&
+            settings.outputDeviceId !== "default" &&
+            "setSinkId" in element &&
+            typeof (element as any).setSinkId === "function"
+          ) {
+            (element as any).setSinkId(settings.outputDeviceId).catch(console.warn);
+          }
+
           document.body.appendChild(element);
 
           if (isScreenAudio) {
@@ -247,13 +272,38 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
       // 7. Connect to LiveKit Server
       await room.connect(tokenResp.url, tokenResp.token);
 
+      const settings = useSettingsStore.getState();
+
+      // Switch to configured audio devices if non-default
+      if (settings.inputDeviceId && settings.inputDeviceId !== "default") {
+        room.switchActiveDevice("audioinput", settings.inputDeviceId).catch(console.warn);
+      }
+      if (settings.outputDeviceId && settings.outputDeviceId !== "default") {
+        room.switchActiveDevice("audiooutput", settings.outputDeviceId).catch(console.warn);
+      }
+
+      // If Push-to-Talk is enabled, user starts muted until key is held
+      const shouldMuteInitially = isMuted || isDeafened || settings.inputMode === "push_to_talk";
+
       // 8. Publish local microphone track if not muted
-      if (!isMuted && !isDeafened) {
+      if (!shouldMuteInitially) {
         try {
-          await room.localParticipant.setMicrophoneEnabled(true);
+          await room.localParticipant.setMicrophoneEnabled(true, {
+            deviceId: settings.inputDeviceId !== "default" ? settings.inputDeviceId : undefined,
+            echoCancellation: settings.echoCancellation,
+            noiseSuppression: settings.noiseSuppression,
+            autoGainControl: settings.autoGainControl,
+          });
         } catch (micErr) {
           console.warn("[voiceStore] Could not enable microphone:", micErr);
           set({ isMuted: true });
+        }
+      } else if (settings.inputMode === "push_to_talk" && !isMuted) {
+        // Prepare microphone track in disabled state for instant PTT response
+        try {
+          await room.localParticipant.setMicrophoneEnabled(false);
+        } catch (micErr) {
+          console.warn("[voiceStore] Could not prepare PTT mic:", micErr);
         }
       }
 
@@ -518,5 +568,64 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
 
   isUserSpeaking: (userId: string) => {
     return get().speakingUserIds.includes(userId);
+  },
+
+  switchInputDevice: async (deviceId: string) => {
+    const { currentRoom } = get();
+    if (currentRoom) {
+      try {
+        await currentRoom.switchActiveDevice("audioinput", deviceId);
+      } catch (err) {
+        console.warn("[voiceStore] switchActiveDevice audioinput error:", err);
+      }
+    }
+  },
+
+  switchOutputDevice: async (deviceId: string) => {
+    const { currentRoom } = get();
+    if (currentRoom) {
+      try {
+        await currentRoom.switchActiveDevice("audiooutput", deviceId);
+      } catch (err) {
+        console.warn("[voiceStore] switchActiveDevice audiooutput error:", err);
+      }
+    }
+    // Update sinkId of active audio elements
+    document.querySelectorAll("audio[data-livekit-track='true']").forEach((el) => {
+      if ("setSinkId" in el && typeof (el as any).setSinkId === "function") {
+        (el as any).setSinkId(deviceId === "default" ? "" : deviceId).catch(console.warn);
+      }
+    });
+  },
+
+  syncUserAudio: (userId: string) => {
+    const settings = useSettingsStore.getState();
+    const isLocallyMuted = settings.isUserLocallyMuted(userId);
+    const userVol = settings.getUserVolume(userId);
+    const masterOut = settings.outputVolume / 100;
+
+    document.querySelectorAll(`audio[data-participant-id='${userId}']`).forEach((el) => {
+      const audioEl = el as HTMLAudioElement;
+      audioEl.muted = get().isDeafened || isLocallyMuted;
+      audioEl.volume = Math.max(0, Math.min(1, (userVol / 100) * masterOut));
+    });
+  },
+
+  syncAllAudio: () => {
+    const settings = useSettingsStore.getState();
+    const masterOut = settings.outputVolume / 100;
+
+    document.querySelectorAll("audio[data-livekit-track='true']").forEach((el) => {
+      const audioEl = el as HTMLAudioElement;
+      const isScreen = audioEl.dataset.screenAudio === "true";
+      const pId = audioEl.dataset.participantId;
+      if (!pId) return;
+
+      const isLocallyMuted = settings.isUserLocallyMuted(pId);
+      const userVol = isScreen ? settings.screenShareVolume : settings.getUserVolume(pId);
+
+      audioEl.muted = get().isDeafened || isLocallyMuted;
+      audioEl.volume = Math.max(0, Math.min(1, (userVol / 100) * masterOut));
+    });
   },
 }));

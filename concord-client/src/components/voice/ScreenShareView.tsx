@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ActiveScreenShare, useVoiceStore } from "../../stores/voiceStore";
-import { Maximize2, Minimize2, MonitorOff, Tv, Radio } from "lucide-react";
+import { useSettingsStore } from "../../stores/settingsStore";
+import { Maximize2, Minimize2, MonitorOff, Tv, Radio, Volume2, VolumeX } from "lucide-react";
 
 interface ScreenShareViewProps {
   screenShare: ActiveScreenShare;
@@ -16,7 +17,17 @@ export const ScreenShareView: React.FC<ScreenShareViewProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showVolume, setShowVolume] = useState(false);
   const toggleScreenShare = useVoiceStore((s) => s.toggleScreenShare);
+  const screenShareVolume = useSettingsStore((s) => s.screenShareVolume);
+  const setScreenShareVolume = useSettingsStore((s) => s.setScreenShareVolume);
+
+  const handleVolumeChange = (val: number) => {
+    setScreenShareVolume(val);
+    document.querySelectorAll("audio[data-screen-audio='true']").forEach((el) => {
+      (el as HTMLAudioElement).volume = Math.max(0, Math.min(1, val / 100));
+    });
+  };
 
   // Attach and detach the LiveKit video track
   useEffect(() => {
@@ -99,6 +110,40 @@ export const ScreenShareView: React.FC<ScreenShareViewProps> = ({
               <MonitorOff className="w-3.5 h-3.5" />
               <span>Stop Sharing</span>
             </button>
+          )}
+
+          {/* Volume Control for Remote Streams */}
+          {!screenShare.isLocal && (
+            <div className="relative flex items-center">
+              <button
+                type="button"
+                onClick={() => setShowVolume(!showVolume)}
+                title={`Volume da Live (${screenShareVolume}%)`}
+                className="p-2 rounded bg-black/50 hover:bg-black/75 text-white/90 hover:text-white transition cursor-pointer backdrop-blur-sm"
+              >
+                {screenShareVolume === 0 ? (
+                  <VolumeX className="w-4 h-4 text-[#f23f43]" />
+                ) : (
+                  <Volume2 className="w-4 h-4" />
+                )}
+              </button>
+
+              {showVolume && (
+                <div className="absolute top-10 right-0 bg-[#111214] border border-[#2b2d31] p-3 rounded-lg shadow-xl flex items-center gap-2 z-20 w-44">
+                  <input
+                    type="range"
+                    min="0"
+                    max="200"
+                    value={screenShareVolume}
+                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                    className="w-full accent-[#5865F2] cursor-pointer"
+                  />
+                  <span className="text-xs font-bold text-white shrink-0 w-8 text-right">
+                    {screenShareVolume}%
+                  </span>
+                </div>
+              )}
+            </div>
           )}
 
           {onMinimize && (

@@ -1,11 +1,25 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import { useGuildStore, EMPTY_MEMBERS, EMPTY_ROLES } from "../../stores/guildStore";
 import { useAuthStore } from "../../stores/authStore";
 import { usePresenceStore } from "../../stores/presenceStore";
 import { useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 import { Member, UserStatus, Role } from "../../types";
-import { Crown, Tv, Shield, UserMinus, Ban as BanIcon, Check, ChevronRight } from "lucide-react";
+import {
+  Crown,
+  Tv,
+  Shield,
+  UserMinus,
+  Ban as BanIcon,
+  Check,
+  ChevronRight,
+  User as UserIcon,
+  Copy,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
+import { UserProfileModal } from "../modals/UserProfileModal";
 
 interface MemberListProps {
   guildId: string;
@@ -49,6 +63,8 @@ const getStatusTitle = (status: UserStatus): string => {
 
 export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
   const { user: currentUser } = useAuthStore();
+  const [profileMember, setProfileMember] = useState<Member | null>(null);
+
   const {
     guilds,
     membersByGuild,
@@ -62,6 +78,12 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
   const presences = usePresenceStore((s) => s.presences);
   const rawVoiceStates = useVoiceStore((s) => s.voiceStatesByGuild[guildId]);
   const voiceStates = rawVoiceStates || EMPTY_VOICE_STATES;
+  const syncUserAudio = useVoiceStore((s) => s.syncUserAudio);
+
+  const userVolumes = useSettingsStore((s) => s.userVolumes);
+  const localMutedUsers = useSettingsStore((s) => s.localMutedUsers);
+  const setUserVolume = useSettingsStore((s) => s.setUserVolume);
+  const toggleLocalMute = useSettingsStore((s) => s.toggleLocalMute);
 
   const currentGuild = guilds.find((g) => g.id === guildId);
   const members = membersByGuild[guildId] || EMPTY_MEMBERS;
@@ -227,11 +249,90 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
 
         {/* Right-click Context Menu */}
         <ContextMenu.Portal>
-          <ContextMenu.Content className="w-52 bg-[#111214] border border-[#2b2d31] p-1.5 rounded-md shadow-xl text-sm font-medium z-50 text-[#dbdee1] animate-in fade-in-0 zoom-in-95">
+          <ContextMenu.Content className="w-56 bg-[#111214] border border-[#2b2d31] p-1.5 rounded-md shadow-xl text-sm font-medium z-50 text-[#dbdee1] animate-in fade-in-0 zoom-in-95">
             <div className="px-2 py-1 text-xs font-bold text-[#949ba4] uppercase truncate">
               {displayName}
             </div>
             <ContextMenu.Separator className="h-[1px] bg-[#2b2d31] my-1" />
+
+            {/* Profile Action */}
+            <ContextMenu.Item
+              onClick={() => setProfileMember(member)}
+              className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+            >
+              <span>Ver Perfil</span>
+              <UserIcon className="w-3.5 h-3.5" />
+            </ContextMenu.Item>
+
+            {/* Copy ID Action */}
+            <ContextMenu.Item
+              onClick={() => {
+                navigator.clipboard.writeText(member.user_id);
+              }}
+              className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+            >
+              <span>Copiar ID do Usuário</span>
+              <Copy className="w-3.5 h-3.5" />
+            </ContextMenu.Item>
+
+            {/* Individual Audio Controls (if not self) */}
+            {!isSelf && (
+              <>
+                <ContextMenu.Separator className="h-[1px] bg-[#2b2d31] my-1" />
+
+                {/* Local Volume Slider 0% - 200% */}
+                <div className="px-2.5 py-2 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-[#dbdee1] font-medium">
+                      <Volume2 className="w-3.5 h-3.5 text-[#949ba4]" />
+                      Volume do Usuário
+                    </span>
+                    <span className="text-white font-bold text-[11px]">
+                      {userVolumes[member.user_id] !== undefined
+                        ? userVolumes[member.user_id]
+                        : 100}
+                      %
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="200"
+                    value={
+                      userVolumes[member.user_id] !== undefined
+                        ? userVolumes[member.user_id]
+                        : 100
+                    }
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setUserVolume(member.user_id, val);
+                      syncUserAudio(member.user_id);
+                    }}
+                    className="w-full accent-[#5865F2] cursor-pointer h-1.5"
+                  />
+                </div>
+
+                {/* Local Mute Toggle */}
+                <ContextMenu.Item
+                  onClick={() => {
+                    toggleLocalMute(member.user_id);
+                    syncUserAudio(member.user_id);
+                  }}
+                  className={`flex items-center justify-between px-2.5 py-1.5 rounded text-xs cursor-pointer transition-colors outline-none ${
+                    localMutedUsers[member.user_id]
+                      ? "text-[#f23f43] bg-[#f23f43]/10"
+                      : "hover:bg-[#5865F2] hover:text-white"
+                  }`}
+                >
+                  <span>
+                    {localMutedUsers[member.user_id]
+                      ? "Desmutar localmente"
+                      : "Mutar localmente"}
+                  </span>
+                  <VolumeX className="w-3.5 h-3.5" />
+                </ContextMenu.Item>
+              </>
+            )}
 
             {/* Roles Submenu */}
             {isCallerOwner && roles.filter((r) => r.name !== "@everyone").length > 0 && (
@@ -328,6 +429,22 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
         <div className="p-4 text-center text-xs text-[#949ba4]">
           Carregando membros...
         </div>
+      )}
+
+      {profileMember && profileMember.user && (
+        <UserProfileModal
+          open={Boolean(profileMember)}
+          onOpenChange={(open) => {
+            if (!open) setProfileMember(null);
+          }}
+          user={profileMember.user}
+          nick={profileMember.nick}
+          joinedAt={profileMember.joined_at}
+          roles={(profileMember.roles || [])
+            .map((rid) => roles.find((r) => r.id === rid))
+            .filter((r): r is Role => Boolean(r && r.name !== "@everyone"))
+            .map((r) => ({ id: r.id, name: r.name, color: r.color }))}
+        />
       )}
     </aside>
   );
