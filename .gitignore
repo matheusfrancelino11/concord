@@ -1,7 +1,15 @@
 # Environment & Secrets
 .env
 .env.local
+.env.production
 *.env
+*.env.production
+*.key
+*.pem
+deploy/.env
+concord-client/src-tauri/*.key
+scripts/*.key
+scripts/.publish-config.ps1
 
 # Operating System Files
 .DS_Store
@@ -18,6 +26,9 @@ concord-test-server*.log
 # Go artifacts & test binaries
 bin/
 *.exe
+concord/concord-linux
+release/
+*.zip
 *.dll
 *.so
 *.dylib

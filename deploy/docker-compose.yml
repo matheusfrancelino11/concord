@@ -1,0 +1,76 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: concord-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-concord}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-concord_strong_pass_2026}
+      POSTGRES_DB: ${DB_NAME:-concord}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-concord} -d ${DB_NAME:-concord}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - concord_net
+
+  concord:
+    build:
+      context: ../concord
+      dockerfile: Dockerfile
+    container_name: concord-backend
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      ENV: production
+      PORT: "8080"
+      DATABASE_URL: postgres://${DB_USER:-concord}:${DB_PASSWORD:-concord_strong_pass_2026}@db:5432/${DB_NAME:-concord}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-concord_jwt_secret_generate_random_key_here}
+      LIVEKIT_URL: ${LIVEKIT_URL:-wss://livekit.localhost}
+      LIVEKIT_KEY: ${LIVEKIT_KEY:-concord_key}
+      LIVEKIT_SECRET: ${LIVEKIT_SECRET:-concord_secret_key_change_me_in_production}
+      CORS_ORIGINS: "*"
+    volumes:
+      - concord_uploads:/app/uploads
+    networks:
+      - concord_net
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: concord-livekit
+    restart: always
+    network_mode: host
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: concord-caddy
+    restart: always
+    network_mode: host
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - concord
+
+volumes:
+  postgres_data:
+  concord_uploads:
+  caddy_data:
+  caddy_config:
+
+networks:
+  concord_net:
+    driver: bridge

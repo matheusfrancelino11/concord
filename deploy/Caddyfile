@@ -1,0 +1,17 @@
+{$DOMAIN:localhost} {
+    encode gzip zstd
+
+    reverse_proxy 127.0.0.1:8080 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+}
+
+livekit.{$DOMAIN:localhost} {
+    encode gzip zstd
+
+    reverse_proxy 127.0.0.1:7880 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+}
