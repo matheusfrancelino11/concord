@@ -4,9 +4,9 @@ import { VoiceState } from "../types";
 import { api } from "../api/client";
 import { getGatewayClient } from "../gateway/GatewayClient";
 
-const EMPTY_VOICE_STATES: VoiceState[] = [];
-const EMPTY_SPEAKING_USERS: string[] = [];
-const EMPTY_SCREEN_SHARES: ActiveScreenShare[] = [];
+export const EMPTY_VOICE_STATES: VoiceState[] = [];
+export const EMPTY_SPEAKING_USERS: string[] = [];
+export const EMPTY_SCREEN_SHARES: ActiveScreenShare[] = [];
 
 export type VoiceConnectionStatus =
   | "disconnected"

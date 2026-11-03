@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useGuildStore, EMPTY_MEMBERS } from "../../stores/guildStore";
 import { usePresenceStore } from "../../stores/presenceStore";
-import { useVoiceStore } from "../../stores/voiceStore";
+import { useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
 import { Member, UserStatus } from "../../types";
 import { Crown, Tv } from "lucide-react";
 
@@ -48,7 +48,8 @@ const getStatusTitle = (status: UserStatus): string => {
 export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
   const { guilds, membersByGuild } = useGuildStore();
   const presences = usePresenceStore((s) => s.presences);
-  const voiceStates = useVoiceStore((s) => s.voiceStatesByGuild[guildId] || []);
+  const rawVoiceStates = useVoiceStore((s) => s.voiceStatesByGuild[guildId]);
+  const voiceStates = rawVoiceStates || EMPTY_VOICE_STATES;
 
   const currentGuild = guilds.find((g) => g.id === guildId);
   const members = membersByGuild[guildId] || EMPTY_MEMBERS;

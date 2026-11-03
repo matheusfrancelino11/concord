@@ -3,7 +3,7 @@ import { useGuildStore } from "../../stores/guildStore";
 import { useChannelStore } from "../../stores/channelStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useMessageStore } from "../../stores/messageStore";
-import { useVoiceStore } from "../../stores/voiceStore";
+import { useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
 import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic, MicOff, Headphones, Tv } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { UserFooter } from "./UserFooter";
@@ -242,8 +242,8 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                 {voiceChannels.map((channel) => {
                   const isActive = channel.id === currentChannelId;
                   const guildVoiceStates = currentGuildId
-                    ? voiceStatesByGuild[currentGuildId] || []
-                    : [];
+                    ? voiceStatesByGuild[currentGuildId] || EMPTY_VOICE_STATES
+                    : EMPTY_VOICE_STATES;
                   const connectedUsers = guildVoiceStates.filter(
                     (vs) => vs.channel_id === channel.id
                   );

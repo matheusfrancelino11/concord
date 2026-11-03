@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Channel } from "../../types";
-import { ActiveScreenShare, useVoiceStore } from "../../stores/voiceStore";
+import { ActiveScreenShare, useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useGuildStore } from "../../stores/guildStore";
 import { ScreenShareView } from "./ScreenShareView";
@@ -91,7 +91,7 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
 
   const isConnectedToThisChannel = activeVoiceChannelId === channel.id;
 
-  const guildVoiceStates = voiceStatesByGuild[channel.guild_id] || [];
+  const guildVoiceStates = voiceStatesByGuild[channel.guild_id] || EMPTY_VOICE_STATES;
   const channelParticipants = guildVoiceStates.filter((vs) => vs.channel_id === channel.id);
 
   const focusedShare = activeScreenShares.find(
