@@ -1,7 +1,7 @@
 import React from "react";
 import { useVoiceStore } from "../../stores/voiceStore";
 import { useGuildStore } from "../../stores/guildStore";
-import { PhoneOff, Wifi, AlertCircle } from "lucide-react";
+import { PhoneOff, Wifi, AlertCircle, MonitorUp, MonitorOff } from "lucide-react";
 
 export const VoiceControls: React.FC = () => {
   const {
@@ -9,6 +9,8 @@ export const VoiceControls: React.FC = () => {
     activeVoiceGuildId,
     activeVoiceChannelName,
     leaveVoiceChannel,
+    isScreenSharing,
+    toggleScreenShare,
     error,
   } = useVoiceStore();
   const guilds = useGuildStore((s) => s.guilds);
@@ -57,16 +59,38 @@ export const VoiceControls: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: Disconnect Button */}
-        <button
-          type="button"
-          onClick={leaveVoiceChannel}
-          title="Disconnect from voice"
-          aria-label="Disconnect from voice"
-          className="p-1.5 rounded bg-[#2b2d31] hover:bg-[#f23f43] hover:text-white text-[#dbdee1] transition cursor-pointer shrink-0 ml-2"
-        >
-          <PhoneOff className="w-4 h-4" />
-        </button>
+        {/* Right: Actions */}
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          {isConnected && (
+            <button
+              type="button"
+              onClick={toggleScreenShare}
+              title={isScreenSharing ? "Stop Sharing Screen" : "Share Your Screen"}
+              aria-label={isScreenSharing ? "Stop Sharing Screen" : "Share Your Screen"}
+              className={`p-1.5 rounded transition cursor-pointer ${
+                isScreenSharing
+                  ? "bg-[#5865F2] hover:bg-[#4752c4] text-white"
+                  : "bg-[#2b2d31] hover:bg-[#35373c] text-[#dbdee1]"
+              }`}
+            >
+              {isScreenSharing ? (
+                <MonitorOff className="w-4 h-4" />
+              ) : (
+                <MonitorUp className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={leaveVoiceChannel}
+            title="Disconnect from voice"
+            aria-label="Disconnect from voice"
+            className="p-1.5 rounded bg-[#2b2d31] hover:bg-[#f23f43] hover:text-white text-[#dbdee1] transition cursor-pointer"
+          >
+            <PhoneOff className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {isError && error && (

@@ -4,7 +4,7 @@ import { useChannelStore } from "../../stores/channelStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useMessageStore } from "../../stores/messageStore";
 import { useVoiceStore } from "../../stores/voiceStore";
-import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic, MicOff, Headphones } from "lucide-react";
+import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic, MicOff, Headphones, Tv } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { UserFooter } from "./UserFooter";
 import { VoiceControls } from "../voice/VoiceControls";
@@ -333,6 +333,12 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                                   )}
                                 </div>
                                 <span className="truncate">{vsName}</span>
+                                {vs.self_stream && (
+                                  <span className="flex items-center gap-0.5 px-1 py-0.2 rounded bg-[#f23f43] text-white text-[9px] font-bold shrink-0 ml-1">
+                                    <Tv className="w-2.5 h-2.5" />
+                                    <span>LIVE</span>
+                                  </span>
+                                )}
                                 <div className="ml-auto shrink-0 flex items-center">
                                   {vs.self_deaf ? (
                                     <Headphones className="w-3 h-3 text-[#f23f43]" />

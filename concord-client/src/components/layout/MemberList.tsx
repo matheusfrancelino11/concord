@@ -1,8 +1,9 @@
 import React, { useMemo } from "react";
 import { useGuildStore, EMPTY_MEMBERS } from "../../stores/guildStore";
 import { usePresenceStore } from "../../stores/presenceStore";
+import { useVoiceStore } from "../../stores/voiceStore";
 import { Member, UserStatus } from "../../types";
-import { Crown } from "lucide-react";
+import { Crown, Tv } from "lucide-react";
 
 interface MemberListProps {
   guildId: string;
@@ -47,9 +48,14 @@ const getStatusTitle = (status: UserStatus): string => {
 export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
   const { guilds, membersByGuild } = useGuildStore();
   const presences = usePresenceStore((s) => s.presences);
+  const voiceStates = useVoiceStore((s) => s.voiceStatesByGuild[guildId] || []);
 
   const currentGuild = guilds.find((g) => g.id === guildId);
   const members = membersByGuild[guildId] || EMPTY_MEMBERS;
+
+  const streamingUserIds = useMemo(() => {
+    return new Set(voiceStates.filter((vs) => vs.self_stream).map((vs) => vs.user_id));
+  }, [voiceStates]);
 
   // Separate members into Online and Offline
   const { onlineMembers, offlineMembers } = useMemo(() => {
@@ -126,6 +132,12 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
             >
               {displayName}
             </span>
+            {streamingUserIds.has(member.user_id) && (
+              <span className="flex items-center gap-0.5 px-1 py-0.2 rounded bg-[#f23f43] text-white text-[9px] font-bold shrink-0">
+                <Tv className="w-2.5 h-2.5" />
+                <span>LIVE</span>
+              </span>
+            )}
             {isGuildOwner && (
               <span title="Server Owner" className="shrink-0 flex items-center">
                 <Crown className="w-3.5 h-3.5 text-[#f0b232]" />
