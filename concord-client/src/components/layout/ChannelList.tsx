@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useGuildStore } from "../../stores/guildStore";
 import { useChannelStore } from "../../stores/channelStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useMessageStore } from "../../stores/messageStore";
 import { useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
-import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic, MicOff, Headphones, Tv, Settings } from "lucide-react";
+import { useDMStore } from "../../stores/dmStore";
+import { usePresenceStore } from "../../stores/presenceStore";
+import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic, MicOff, Headphones, Tv, Settings, X, MessageSquare } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { UserFooter } from "./UserFooter";
 import { VoiceControls } from "../voice/VoiceControls";
@@ -27,16 +29,23 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   const { channels, channelsByGuild, selectedChannelId, activeChannelId, selectChannel, deleteChannel } = useChannelStore();
   const unreadByChannel = useMessageStore((s) => s.unreadByChannel);
   const clearUnread = useMessageStore((s) => s.clearUnread);
-  const {
-    voiceStatesByGuild,
-    activeVoiceChannelId,
-    joinVoiceChannel,
-    leaveVoiceChannel,
-    isUserSpeaking,
-  } = useVoiceStore();
+  const { dmChannels, selectedDMChannelId, selectDMChannel, fetchDMs, closeDM, getRecipient } = useDMStore();
+  const presences = usePresenceStore((s) => s.presences);
+  const voiceStatesByGuild = useVoiceStore((s) => s.voiceStatesByGuild);
+  const activeVoiceChannelId = useVoiceStore((s) => s.activeVoiceChannelId);
+  const joinVoiceChannel = useVoiceStore((s) => s.joinVoiceChannel);
+  const leaveVoiceChannel = useVoiceStore((s) => s.leaveVoiceChannel);
+  const isUserSpeaking = useVoiceStore((s) => s.isUserSpeaking);
 
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentChannelId = selectedChannelId || activeChannelId;
+
+  // Fetch DMs whenever Direct Messages view is opened
+  useEffect(() => {
+    if (!currentGuildId) {
+      fetchDMs();
+    }
+  }, [currentGuildId, fetchDMs]);
 
   const currentGuild = guilds.find((g) => g.id === currentGuildId);
   const guildChannels = currentGuildId
@@ -138,22 +147,129 @@ export const ChannelList: React.FC<ChannelListProps> = ({
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
         ) : (
-          <span className="text-[15px] font-bold text-[#f2f3f5]">Direct Messages</span>
+          <div className="w-full flex items-center justify-between text-[15px] font-bold text-[#f2f3f5]">
+            <span className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-[#1FCE66]" />
+              <span>Mensagens Diretas</span>
+            </span>
+          </div>
         )}
       </div>
 
-      {/* 2. Channel Tree */}
+      {/* 2. Channel Tree / DM Conversations */}
       <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4 no-scrollbar">
         {!currentGuild ? (
-          <div className="px-3 py-6 text-center text-xs text-[#949ba4]">
-            <p>No server selected.</p>
-            <button
-              type="button"
-              onClick={onOpenCreateServer}
-              className="mt-3 text-[#5865F2] hover:underline block mx-auto font-medium cursor-pointer"
-            >
-              Create a Server
-            </button>
+          <div>
+            <div className="flex items-center justify-between px-2 pb-1.5 text-[12px] font-bold tracking-wider text-[#949ba4] uppercase">
+              <span>Conversas Diretas</span>
+              <span className="text-[11px] bg-[#1e1f22] px-1.5 py-0.5 rounded text-[#80848e]">
+                {dmChannels.length}
+              </span>
+            </div>
+
+            {dmChannels.length === 0 ? (
+              <div className="px-3 py-8 text-center text-xs text-[#949ba4] space-y-2">
+                <p>Nenhuma conversa ativa.</p>
+                <p className="text-[11px] text-[#80848e]">
+                  Clique com o botão direito em um amigo no servidor para enviar uma mensagem direta!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-0.5">
+                {dmChannels.map((channel) => {
+                  const recipient = getRecipient(channel, user?.id);
+                  const recipientId = recipient?.id || "";
+                  const status = presences[recipientId] || "offline";
+                  const isActive = channel.id === selectedDMChannelId;
+                  const unreadCount = unreadByChannel[channel.id] || 0;
+                  const hasUnread = unreadCount > 0 && !isActive;
+                  const displayName = recipient?.global_name || recipient?.username || "Usuário";
+
+                  return (
+                    <div
+                      key={channel.id}
+                      onClick={() => {
+                        selectDMChannel(channel.id);
+                        clearUnread(channel.id);
+                      }}
+                      className={`relative group flex items-center justify-between px-2 py-2 rounded-[4px] cursor-pointer transition-colors ${
+                        isActive
+                          ? "bg-[#404249] text-white font-medium"
+                          : hasUnread
+                          ? "text-white font-semibold hover:bg-[#35373c]"
+                          : "text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]"
+                      }`}
+                    >
+                      {/* Unread indicator pill */}
+                      {hasUnread && (
+                        <div className="w-1 h-2 bg-white rounded-r absolute -left-2" />
+                      )}
+
+                      <div className="flex items-center min-w-0 gap-2.5">
+                        {/* Avatar with status indicator */}
+                        <div className="relative shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center text-white text-xs font-bold overflow-hidden">
+                            {recipient?.avatar ? (
+                              <img
+                                src={recipient.avatar}
+                                alt={displayName}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              displayName.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <span
+                            className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#2b2d31] ${
+                              status === "online"
+                                ? "bg-[#23a55a]"
+                                : status === "idle"
+                                ? "bg-[#f0b232]"
+                                : status === "dnd"
+                                ? "bg-[#f23f43]"
+                                : "bg-[#80848e]"
+                            }`}
+                          />
+                        </div>
+
+                        {/* Name and handle */}
+                        <div className="min-w-0">
+                          <div className="text-sm truncate font-medium text-[#dbdee1] group-hover:text-white">
+                            {displayName}
+                          </div>
+                          {recipient?.global_name && recipient.global_name !== recipient.username && (
+                            <div className="text-[11px] text-[#949ba4] truncate -mt-0.5">
+                              @{recipient.username}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right icons: Unread badge & Close button */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {hasUnread && (
+                          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#f23f43] text-white">
+                            {unreadCount}
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            closeDM(channel.id);
+                          }}
+                          aria-label={`Fechar DM com ${displayName}`}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:text-[#f23f43] text-[#949ba4] transition cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         ) : (
           <>

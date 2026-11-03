@@ -13,6 +13,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
   const currentGuildId = selectedGuildId || activeGuildId;
   const [winkingTimestamp, setWinkingTimestamp] = useState<number | null>(null);
 
+  const isHomeActive = !currentGuildId;
+
   const handleHomeClick = () => {
     selectGuild("");
     setWinkingTimestamp(Date.now());
@@ -43,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
             <div className="relative group flex items-center justify-center w-full mb-1">
               <div
                 className={`absolute left-0 w-1 bg-white rounded-r transition-all duration-200 ${
-                  currentGuildId === null ? "h-10" : "h-0 group-hover:h-5"
+                  isHomeActive ? "h-10" : "h-0 group-hover:h-5"
                 }`}
               />
               <button
@@ -51,18 +53,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCreateServer }) => {
                 onClick={handleHomeClick}
                 aria-label="Direct Messages"
                 className={`w-12 h-12 flex items-center justify-center transition-all duration-200 cursor-pointer overflow-hidden ${
-                  currentGuildId === null
-                    ? "rounded-[16px] bg-[#1FCE66] text-white shadow-lg shadow-[#1FCE66]/20"
-                    : "rounded-[24px] bg-[#313338] text-[#dbdee1] hover:rounded-[16px] hover:bg-[#1FCE66] hover:text-white"
+                  isHomeActive
+                    ? "rounded-[16px] bg-[#1FCE66] text-[#1FCE66] shadow-lg shadow-[#1FCE66]/20"
+                    : "rounded-[24px] bg-[#313338] text-[#313338] hover:rounded-[16px] hover:bg-[#1FCE66] hover:text-[#1FCE66]"
                 }`}
               >
                 <ConcordLogo
-                  key={winkingTimestamp || "idle"}
+                  key={winkingTimestamp ? `wink-${winkingTimestamp}` : (isHomeActive ? "home-on" : "home-off")}
                   size={28}
                   variant="mascot"
                   animated={false}
                   isWinking={Boolean(winkingTimestamp)}
-                  eyeColor={currentGuildId === null ? "#1FCE66" : "#2b2d31"}
+                  eyeColor="currentColor"
                   bodyColor="#FFFFFF"
                 />
               </button>

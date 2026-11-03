@@ -69,6 +69,12 @@
   }
 }
 
+/* SVG Transform Box for perfectly centered, scale-independent vector animations */
+.concord-mascot-part {
+  transform-box: fill-box !important;
+  transform-origin: center !important;
+}
+
 @keyframes concord-wink {
   0%, 42%, 48%, 100% {
     transform: scaleY(1);
@@ -78,64 +84,93 @@
   }
 }
 
-/* Click-triggered snappy wink & pop animations */
-@keyframes concord-click-wink {
+/* Fluid whole-face synchronized animations */
+@keyframes concord-face-tilt {
   0% {
-    transform: scaleY(1);
+    transform: rotate(0deg) scale(1) translateY(0);
   }
-  28% {
-    transform: scaleY(0.08);
+  18% {
+    transform: rotate(1.2deg) scale(0.97, 1.02) translateY(1px);
+  }
+  38% {
+    transform: rotate(-3.5deg) scale(1.04, 0.97) translateY(-2px);
+  }
+  60% {
+    transform: rotate(0.8deg) scale(0.99, 1.01) translateY(0);
+  }
+  80% {
+    transform: rotate(-0.3deg) scale(1.005);
+  }
+  100% {
+    transform: rotate(0deg) scale(1) translateY(0);
+  }
+}
+
+/* Quick, snappy, playful wink that never vanishes */
+@keyframes concord-wink-smooth {
+  0%, 15% {
+    transform: scaleY(1) scaleX(1);
+  }
+  32% {
+    transform: scaleY(0.18) scaleX(1.08);
   }
   48% {
-    transform: scaleY(0.08);
+    transform: scaleY(1.12) scaleX(0.97);
   }
-  75% {
-    transform: scaleY(1.15);
+  65% {
+    transform: scaleY(0.96) scaleX(1.01);
   }
-  100% {
-    transform: scaleY(1);
-  }
-}
-
-@keyframes concord-click-smirk {
-  0% {
-    transform: rotate(0deg) scale(1);
-  }
-  35% {
-    transform: rotate(6deg) scale(1.1);
-  }
-  75% {
-    transform: rotate(-1deg) scale(0.98);
-  }
-  100% {
-    transform: rotate(0deg) scale(1);
+  85%, 100% {
+    transform: scaleY(1) scaleX(1);
   }
 }
 
-@keyframes concord-pop {
-  0% {
-    transform: scale(1);
+/* Right eye reacts expressively with brow lift */
+@keyframes concord-eye-react {
+  0%, 15% {
+    transform: translateY(0) scale(1);
   }
-  25% {
-    transform: scale(0.86);
+  32% {
+    transform: translateY(-4px) scale(1.06, 0.96);
   }
   55% {
-    transform: scale(1.14);
+    transform: translateY(-1px) scale(1.02);
   }
-  78% {
-    transform: scale(0.96);
-  }
-  100% {
-    transform: scale(1);
+  85%, 100% {
+    transform: translateY(0) scale(1);
   }
 }
 
-.animate-concord-click-wink {
-  animation: concord-click-wink 0.65s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+/* Smirk curls cheekily in sync with the wink */
+@keyframes concord-smirk-curl {
+  0%, 15% {
+    transform: rotate(0deg) scale(1) translateX(0);
+  }
+  35% {
+    transform: rotate(6.5deg) scale(1.12) translateX(2px) translateY(-2.5px);
+  }
+  58% {
+    transform: rotate(-0.8deg) scale(1.02);
+  }
+  85%, 100% {
+    transform: rotate(0deg) scale(1) translateX(0);
+  }
 }
 
-.animate-concord-click-smirk {
-  animation: concord-click-smirk 0.65s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+.animate-concord-face-tilt {
+  animation: concord-face-tilt 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-concord-wink-smooth {
+  animation: concord-wink-smooth 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.animate-concord-eye-react {
+  animation: concord-eye-react 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.animate-concord-smirk-curl {
+  animation: concord-smirk-curl 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 .animate-concord-pop {

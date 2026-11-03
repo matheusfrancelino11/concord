@@ -95,6 +95,10 @@ func NewRouter(deps *RouterDeps) http.Handler {
 			// Direct channel routes
 			pr.Delete("/channels/{id}", deps.ChannelHandler.DeleteChannel)
 
+			// Direct Messages routes
+			pr.Get("/users/@me/channels", deps.ChannelHandler.ListUserDMChannels)
+			pr.Post("/users/@me/channels", deps.ChannelHandler.CreateDMChannel)
+
 			// Milestone 2 Message routes
 			if deps.MessageHandler != nil {
 				pr.Get("/channels/{id}/messages", deps.MessageHandler.ListMessages)

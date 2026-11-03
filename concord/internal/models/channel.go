@@ -9,7 +9,9 @@ import (
 // Channel type constants
 const (
 	ChannelTypeText     = 0 // GUILD_TEXT
+	ChannelTypeDM       = 1 // DM
 	ChannelTypeVoice    = 2 // GUILD_VOICE
+	ChannelTypeGroupDM  = 3 // GROUP_DM
 	ChannelTypeCategory = 4 // GUILD_CATEGORY
 )
 
@@ -54,18 +56,19 @@ type Channel struct {
 
 // ChannelResponse is the API model for channel endpoints
 type ChannelResponse struct {
-	ID        snowflake.ID  `json:"id"`
-	GuildID   snowflake.ID  `json:"guild_id"`
-	Type      int           `json:"type"`
-	Name      string        `json:"name"`
-	Topic     *string       `json:"topic,omitempty"`
-	Position  int           `json:"position"`
-	ParentID  *snowflake.ID `json:"parent_id,omitempty"`
-	Bitrate   *int          `json:"bitrate,omitempty"`
-	UserLimit *int          `json:"user_limit,omitempty"`
-	RateLimit int           `json:"rate_limit"`
-	NSFW      bool          `json:"nsfw"`
-	CreatedAt time.Time     `json:"created_at"`
+	ID         snowflake.ID   `json:"id"`
+	GuildID    snowflake.ID   `json:"guild_id"`
+	Type       int            `json:"type"`
+	Name       string         `json:"name"`
+	Topic      *string        `json:"topic,omitempty"`
+	Position   int            `json:"position"`
+	ParentID   *snowflake.ID  `json:"parent_id,omitempty"`
+	Bitrate    *int           `json:"bitrate,omitempty"`
+	UserLimit  *int           `json:"user_limit,omitempty"`
+	RateLimit  int            `json:"rate_limit"`
+	NSFW       bool           `json:"nsfw"`
+	CreatedAt  time.Time      `json:"created_at"`
+	Recipients []UserResponse `json:"recipients,omitempty"`
 }
 
 // CreateChannelRequest is the payload for creating a channel
@@ -76,4 +79,9 @@ type CreateChannelRequest struct {
 	ParentID  *snowflake.ID `json:"parent_id,omitempty"`
 	Bitrate   *int          `json:"bitrate,omitempty"`
 	UserLimit *int          `json:"user_limit,omitempty"`
+}
+
+// CreateDMChannelRequest is the payload for creating a direct message channel
+type CreateDMChannelRequest struct {
+	RecipientID snowflake.ID `json:"recipient_id"`
 }

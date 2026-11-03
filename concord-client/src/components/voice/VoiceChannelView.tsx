@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Channel } from "../../types";
+import { Channel, VoiceState } from "../../types";
 import { ActiveScreenShare, useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useGuildStore } from "../../stores/guildStore";
@@ -91,8 +91,9 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
 
   const isConnectedToThisChannel = activeVoiceChannelId === channel.id;
 
-  const guildVoiceStates = voiceStatesByGuild[channel.guild_id] || EMPTY_VOICE_STATES;
-  const channelParticipants = guildVoiceStates.filter((vs) => vs.channel_id === channel.id);
+  const guildVoiceStates: VoiceState[] =
+    (channel.guild_id && voiceStatesByGuild[channel.guild_id]) || EMPTY_VOICE_STATES;
+  const channelParticipants = guildVoiceStates.filter((vs: VoiceState) => vs.channel_id === channel.id);
 
   const focusedShare = activeScreenShares.find(
     (s) => s.userId === focusedScreenShareUserId
@@ -194,7 +195,11 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
           ) : (
             <button
               type="button"
-              onClick={() => joinVoiceChannel(channel.guild_id, channel.id, channel.name)}
+              onClick={() => {
+                if (channel.guild_id) {
+                  joinVoiceChannel(channel.guild_id, channel.id, channel.name);
+                }
+              }}
               className="flex items-center gap-2 px-4 py-2 rounded bg-[#23a55a] hover:bg-[#1f9250] text-white font-semibold text-xs transition cursor-pointer shadow-md"
             >
               <LogIn className="w-4 h-4" />
@@ -316,7 +321,11 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                 {!isConnectedToThisChannel && (
                   <button
                     type="button"
-                    onClick={() => joinVoiceChannel(channel.guild_id, channel.id, channel.name)}
+                    onClick={() => {
+                      if (channel.guild_id) {
+                        joinVoiceChannel(channel.guild_id, channel.id, channel.name);
+                      }
+                    }}
                     className="flex items-center gap-2 px-6 py-2.5 rounded bg-[#23a55a] hover:bg-[#1f9250] text-white font-semibold text-sm transition cursor-pointer shadow-lg"
                   >
                     <LogIn className="w-4 h-4" />

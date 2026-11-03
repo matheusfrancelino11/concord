@@ -349,6 +349,19 @@ export const api = {
         method: "POST",
       });
     },
+
+    listDMs: async (): Promise<Channel[]> => {
+      return request<Channel[]>("/users/@me/channels", {
+        method: "GET",
+      });
+    },
+
+    createDM: async (recipientId: string): Promise<Channel> => {
+      return request<Channel>("/users/@me/channels", {
+        method: "POST",
+        body: JSON.stringify({ recipient_id: recipientId }),
+      });
+    },
   },
 
   messages: {

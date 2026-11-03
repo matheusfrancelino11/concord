@@ -31,9 +31,10 @@ var (
 	ErrInvalidLimit    = errors.New("invalid pagination limit")
 )
 
-// Broadcaster defines the interface for delivering real-time events to guild Hubs
+// Broadcaster defines the interface for delivering real-time events to guild Hubs or direct user sessions
 type Broadcaster interface {
 	BroadcastToGuild(guildID snowflake.ID, eventType string, payload any)
+	BroadcastToUser(userID snowflake.ID, eventType string, payload any)
 }
 
 // MessageService defines operations for message persistence and fanout
@@ -60,18 +61,31 @@ func NewMessageService(db *pgxpool.Pool, sf *snowflake.Generator, broadcaster Br
 	}
 }
 
-// checkChannelAccess verifies that the channel exists, is a text channel, and caller is a guild member
+// checkChannelAccess verifies that the channel exists, is a valid text/DM channel, and caller has access
 func (s *messageService) checkChannelAccess(ctx context.Context, callerID, channelID snowflake.ID) (snowflake.ID, error) {
 	var guildID snowflake.ID
 	var channelType int
 
-	query := `SELECT guild_id, type FROM channels WHERE id = $1`
+	query := `SELECT COALESCE(guild_id, 0), type FROM channels WHERE id = $1`
 	err := s.db.QueryRow(ctx, query, channelID).Scan(&guildID, &channelType)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, ErrChannelNotFound
 		}
 		return 0, fmt.Errorf("check channel: %w", err)
+	}
+
+	if channelType == models.ChannelTypeDM {
+		var isRecipient bool
+		recipQuery := `SELECT EXISTS(SELECT 1 FROM channel_recipients WHERE channel_id = $1 AND user_id = $2)`
+		err = s.db.QueryRow(ctx, recipQuery, channelID, callerID).Scan(&isRecipient)
+		if err != nil {
+			return 0, fmt.Errorf("check dm recipient: %w", err)
+		}
+		if !isRecipient {
+			return 0, ErrForbidden
+		}
+		return 0, nil
 	}
 
 	if channelType != models.ChannelTypeText {
@@ -89,6 +103,38 @@ func (s *messageService) checkChannelAccess(ctx context.Context, callerID, chann
 	}
 
 	return guildID, nil
+}
+
+func (s *messageService) getChannelRecipients(ctx context.Context, channelID snowflake.ID) ([]snowflake.ID, error) {
+	rows, err := s.db.Query(ctx, `SELECT user_id FROM channel_recipients WHERE channel_id = $1`, channelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var recips []snowflake.ID
+	for rows.Next() {
+		var uid snowflake.ID
+		if err := rows.Scan(&uid); err == nil {
+			recips = append(recips, uid)
+		}
+	}
+	return recips, nil
+}
+
+func (s *messageService) broadcastEvent(ctx context.Context, guildID, channelID snowflake.ID, eventType string, payload any) {
+	if s.broadcaster == nil {
+		return
+	}
+	if guildID != 0 {
+		s.broadcaster.BroadcastToGuild(guildID, eventType, payload)
+	} else {
+		if recips, err := s.getChannelRecipients(ctx, channelID); err == nil {
+			for _, uid := range recips {
+				s.broadcaster.BroadcastToUser(uid, eventType, payload)
+			}
+		}
+	}
 }
 
 func (s *messageService) ListMessages(ctx context.Context, callerID, channelID snowflake.ID, before *snowflake.ID, limit int) ([]models.MessageResponse, error) {
@@ -231,10 +277,8 @@ func (s *messageService) CreateMessage(ctx context.Context, callerID, channelID 
 	resp.Author = author
 	resp.GuildID = guildID
 
-	// Broadcast MESSAGE_CREATE to guild Hub
-	if s.broadcaster != nil {
-		s.broadcaster.BroadcastToGuild(guildID, EventMessageCreate, resp)
-	}
+	// Broadcast MESSAGE_CREATE to guild or DM recipients
+	s.broadcastEvent(ctx, guildID, channelID, EventMessageCreate, resp)
 
 	return &resp, guildID, nil
 }
@@ -304,10 +348,8 @@ func (s *messageService) UpdateMessage(ctx context.Context, callerID, channelID,
 	resp.Author = author
 	resp.GuildID = guildID
 
-	// Broadcast MESSAGE_UPDATE to guild Hub
-	if s.broadcaster != nil {
-		s.broadcaster.BroadcastToGuild(guildID, EventMessageUpdate, resp)
-	}
+	// Broadcast MESSAGE_UPDATE to guild or DM recipients
+	s.broadcastEvent(ctx, guildID, channelID, EventMessageUpdate, resp)
 
 	return &resp, guildID, nil
 }
@@ -316,7 +358,7 @@ func (s *messageService) DeleteMessage(ctx context.Context, callerID, channelID,
 	// First verify channel exists
 	var guildID snowflake.ID
 	var cType int
-	err := s.db.QueryRow(ctx, `SELECT guild_id, type FROM channels WHERE id = $1`, channelID).Scan(&guildID, &cType)
+	err := s.db.QueryRow(ctx, `SELECT COALESCE(guild_id, 0), type FROM channels WHERE id = $1`, channelID).Scan(&guildID, &cType)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, ErrChannelNotFound
@@ -324,33 +366,48 @@ func (s *messageService) DeleteMessage(ctx context.Context, callerID, channelID,
 		return 0, fmt.Errorf("query channel: %w", err)
 	}
 
-	// Verify membership
-	var isMember bool
-	err = s.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM members WHERE guild_id = $1 AND user_id = $2)`, guildID, callerID).Scan(&isMember)
-	if err != nil || !isMember {
-		return 0, ErrForbidden
-	}
-
-	// Fetch message author and guild owner
-	var authorID, ownerID snowflake.ID
-	authQuery := `
-		SELECT m.author_id, g.owner_id
-		FROM messages m
-		JOIN channels c ON c.id = m.channel_id
-		JOIN guilds g ON g.id = c.guild_id
-		WHERE m.id = $1 AND m.channel_id = $2
-	`
-	err = s.db.QueryRow(ctx, authQuery, messageID, channelID).Scan(&authorID, &ownerID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, ErrMessageNotFound
+	if cType == models.ChannelTypeDM {
+		// DM message: verify caller is author of message
+		var authorID snowflake.ID
+		err = s.db.QueryRow(ctx, `SELECT author_id FROM messages WHERE id = $1 AND channel_id = $2`, messageID, channelID).Scan(&authorID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return 0, ErrMessageNotFound
+			}
+			return 0, fmt.Errorf("query dm message delete: %w", err)
 		}
-		return 0, fmt.Errorf("query message delete auth: %w", err)
-	}
+		if callerID != authorID {
+			return 0, ErrForbidden
+		}
+	} else {
+		// Verify membership
+		var isMember bool
+		err = s.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM members WHERE guild_id = $1 AND user_id = $2)`, guildID, callerID).Scan(&isMember)
+		if err != nil || !isMember {
+			return 0, ErrForbidden
+		}
 
-	// Author OR guild owner allowed
-	if callerID != authorID && callerID != ownerID {
-		return 0, ErrForbidden
+		// Fetch message author and guild owner
+		var authorID, ownerID snowflake.ID
+		authQuery := `
+			SELECT m.author_id, g.owner_id
+			FROM messages m
+			JOIN channels c ON c.id = m.channel_id
+			JOIN guilds g ON g.id = c.guild_id
+			WHERE m.id = $1 AND m.channel_id = $2
+		`
+		err = s.db.QueryRow(ctx, authQuery, messageID, channelID).Scan(&authorID, &ownerID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return 0, ErrMessageNotFound
+			}
+			return 0, fmt.Errorf("query message delete auth: %w", err)
+		}
+
+		// Author OR guild owner allowed
+		if callerID != authorID && callerID != ownerID {
+			return 0, ErrForbidden
+		}
 	}
 
 	delCmd, err := s.db.Exec(ctx, `DELETE FROM messages WHERE id = $1 AND channel_id = $2`, messageID, channelID)
@@ -361,15 +418,13 @@ func (s *messageService) DeleteMessage(ctx context.Context, callerID, channelID,
 		return 0, ErrMessageNotFound
 	}
 
-	// Broadcast MESSAGE_DELETE to guild Hub
-	if s.broadcaster != nil {
-		deletePayload := models.MessageDeletePayload{
-			ID:        messageID,
-			ChannelID: channelID,
-			GuildID:   guildID,
-		}
-		s.broadcaster.BroadcastToGuild(guildID, EventMessageDelete, deletePayload)
+	// Broadcast MESSAGE_DELETE to guild or DM recipients
+	deletePayload := models.MessageDeletePayload{
+		ID:        messageID,
+		ChannelID: channelID,
+		GuildID:   guildID,
 	}
+	s.broadcastEvent(ctx, guildID, channelID, EventMessageDelete, deletePayload)
 
 	return guildID, nil
 }
@@ -381,15 +436,13 @@ func (s *messageService) TriggerTyping(ctx context.Context, callerID, channelID 
 	}
 
 	// Ephemeral: NO DB WRITE
-	if s.broadcaster != nil {
-		typingPayload := models.TypingStartPayload{
-			ChannelID: channelID,
-			GuildID:   guildID,
-			UserID:    callerID,
-			Timestamp: time.Now().UnixMilli(),
-		}
-		s.broadcaster.BroadcastToGuild(guildID, EventTypingStart, typingPayload)
+	typingPayload := models.TypingStartPayload{
+		ChannelID: channelID,
+		GuildID:   guildID,
+		UserID:    callerID,
+		Timestamp: time.Now().UnixMilli(),
 	}
+	s.broadcastEvent(ctx, guildID, channelID, EventTypingStart, typingPayload)
 
 	return guildID, nil
 }

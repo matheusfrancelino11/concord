@@ -10,8 +10,9 @@ import (
 
 // HubManager maintains active Hub instances per guild with thread-safe access
 type HubManager struct {
-	mu   sync.RWMutex
-	hubs map[string]*Hub
+	mu           sync.RWMutex
+	hubs         map[string]*Hub
+	sessionStore *SessionStore
 }
 
 // NewHubManager constructs a new HubManager
@@ -19,6 +20,13 @@ func NewHubManager() *HubManager {
 	return &HubManager{
 		hubs: make(map[string]*Hub),
 	}
+}
+
+// SetSessionStore attaches the session store to enable direct user messaging fanout
+func (m *HubManager) SetSessionStore(store *SessionStore) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.sessionStore = store
 }
 
 // GetOrCreateHub retrieves an existing guild Hub or instantiates and starts a new one
@@ -55,6 +63,17 @@ func (m *HubManager) GetHub(guildID string) (*Hub, bool) {
 // BroadcastToGuild delivers an event to all connected members of the specified guild
 func (m *HubManager) BroadcastToGuild(guildID snowflake.ID, eventType string, payload any) {
 	m.BroadcastToGuildExcept(guildID, eventType, payload, "")
+}
+
+// BroadcastToUser delivers an event directly to a user's active session(s)
+func (m *HubManager) BroadcastToUser(userID snowflake.ID, eventType string, payload any) {
+	m.mu.RLock()
+	store := m.sessionStore
+	m.mu.RUnlock()
+
+	if store != nil {
+		store.BroadcastToUser(userID, eventType, payload)
+	}
 }
 
 // BroadcastToGuildExcept delivers an event to connected members of the guild excluding a specific session

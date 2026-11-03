@@ -6,6 +6,7 @@ import { useMessageStore } from "./stores/messageStore";
 import { usePresenceStore } from "./stores/presenceStore";
 import { useVoiceStore } from "./stores/voiceStore";
 import { useSettingsStore } from "./stores/settingsStore";
+import { useDMStore } from "./stores/dmStore";
 import { gateway } from "./gateway/GatewayClient";
 import {
   GatewayEvent,
@@ -33,8 +34,11 @@ export const App: React.FC = () => {
   const cleanupExpiredTyping = useMessageStore((s) => s.cleanupExpiredTyping);
   const resetMessageStore = useMessageStore((s) => s.reset);
 
+  const selectedDMChannelId = useDMStore((s) => s.selectedDMChannelId);
   const currentGuildId = selectedGuildId || activeGuildId;
-  const currentChannelId = selectedChannelId || activeChannelId;
+  const currentChannelId = currentGuildId
+    ? (selectedChannelId || activeChannelId)
+    : selectedDMChannelId;
   const currentChannelIdRef = useRef(currentChannelId);
 
   useEffect(() => {

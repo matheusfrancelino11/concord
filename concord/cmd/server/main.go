@@ -48,6 +48,7 @@ func main() {
 
 	hubManager := gateway.NewHubManager()
 	sessionStore := gateway.NewSessionStore()
+	hubManager.SetSessionStore(sessionStore)
 	presenceTracker := gateway.NewPresenceTracker()
 
 	authService := service.NewAuthService(pool, sf, cfg.JWTSecret)

@@ -137,7 +137,9 @@ export const Permissions = {
 
 export const ChannelType = {
   TEXT: 0,
+  DM: 1,
   VOICE: 2,
+  GROUP_DM: 3,
   CATEGORY: 4,
 } as const;
 
@@ -145,7 +147,7 @@ export type ChannelTypeValue = typeof ChannelType[keyof typeof ChannelType];
 
 export interface Channel {
   id: Snowflake;
-  guild_id: Snowflake;
+  guild_id?: Snowflake | null;
   type: ChannelTypeValue;
   name: string;
   topic?: string | null;
@@ -156,6 +158,7 @@ export interface Channel {
   rate_limit: number;
   nsfw: boolean;
   created_at: string;
+  recipients?: User[];
 }
 
 // ==========================================

@@ -1,7 +1,10 @@
 import React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { UserSummary } from "../../types";
-import { X, Calendar, Copy, Check } from "lucide-react";
+import { X, Calendar, Copy, Check, MessageSquare } from "lucide-react";
+import { useAuthStore } from "../../stores/authStore";
+import { useGuildStore } from "../../stores/guildStore";
+import { useDMStore } from "../../stores/dmStore";
 
 interface UserProfileModalProps {
   open: boolean;
@@ -21,6 +24,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   roles = [],
 }) => {
   const [copied, setCopied] = React.useState(false);
+  const currentUser = useAuthStore((s) => s.user);
+  const selectGuild = useGuildStore((s) => s.selectGuild);
+  const openDM = useDMStore((s) => s.openDM);
+
+  const isSelf = currentUser?.id === user.id;
 
   const displayName = nick || user.global_name || user.username;
   const initial = displayName.charAt(0).toUpperCase();
@@ -74,6 +82,25 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <h3 className="text-xl font-bold text-white leading-tight">{displayName}</h3>
                 <div className="text-sm text-[#949ba4]">@{user.username}</div>
               </div>
+
+              {!isSelf && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await openDM(user.id);
+                      selectGuild("");
+                      onOpenChange(false);
+                    } catch (err) {
+                      console.error("Failed to open DM:", err);
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-[#1FCE66] hover:bg-[#1bb85a] text-white py-2 rounded-lg font-medium text-xs transition cursor-pointer shadow"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Enviar Mensagem Direta</span>
+                </button>
+              )}
 
               <div className="h-[1px] bg-[#2b2d31]" />
 

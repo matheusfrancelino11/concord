@@ -5,6 +5,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { usePresenceStore } from "../../stores/presenceStore";
 import { useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
 import { useSettingsStore } from "../../stores/settingsStore";
+import { useDMStore } from "../../stores/dmStore";
 import { Member, UserStatus, Role } from "../../types";
 import {
   Crown,
@@ -18,6 +19,7 @@ import {
   Copy,
   Volume2,
   VolumeX,
+  MessageSquare,
 } from "lucide-react";
 import { UserProfileModal } from "../modals/UserProfileModal";
 
@@ -73,7 +75,10 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
     banMember,
     addMemberRole,
     removeMemberRole,
+    selectGuild,
   } = useGuildStore();
+
+  const openDM = useDMStore((s) => s.openDM);
 
   const presences = usePresenceStore((s) => s.presences);
   const rawVoiceStates = useVoiceStore((s) => s.voiceStatesByGuild[guildId]);
@@ -263,6 +268,24 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
               <span>Ver Perfil</span>
               <UserIcon className="w-3.5 h-3.5" />
             </ContextMenu.Item>
+
+            {/* Direct Message Action */}
+            {!isSelf && (
+              <ContextMenu.Item
+                onClick={async () => {
+                  try {
+                    await openDM(member.user_id);
+                    selectGuild("");
+                  } catch (err) {
+                    console.error("Failed to open DM:", err);
+                  }
+                }}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+              >
+                <span>Enviar Mensagem Direta</span>
+                <MessageSquare className="w-3.5 h-3.5" />
+              </ContextMenu.Item>
+            )}
 
             {/* Copy ID Action */}
             <ContextMenu.Item

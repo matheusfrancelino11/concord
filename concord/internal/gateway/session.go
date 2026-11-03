@@ -234,6 +234,16 @@ func (store *SessionStore) GetUserSessions(userID snowflake.ID) []*SessionRecord
 	return result
 }
 
+// BroadcastToUser dispatches an event to all active sessions of a user
+func (store *SessionStore) BroadcastToUser(userID snowflake.ID, eventName string, payload any) {
+	sessions := store.GetUserSessions(userID)
+	for _, s := range sessions {
+		if !s.IsExpired() {
+			s.Dispatch(eventName, payload)
+		}
+	}
+}
+
 // AttachGuildToUserSessions attaches a newly joined guild to all active sessions of a user
 func (store *SessionStore) AttachGuildToUserSessions(userID snowflake.ID, guildID snowflake.ID, hub *Hub, guildDetail any) {
 	sessions := store.GetUserSessions(userID)
