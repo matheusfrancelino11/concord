@@ -6,6 +6,7 @@ import { CreateServerModal } from "../modals/CreateServerModal";
 import { CreateChannelModal } from "../modals/CreateChannelModal";
 import { InviteModal } from "../modals/InviteModal";
 import { JoinServerModal } from "../modals/JoinServerModal";
+import { ServerSettingsModal } from "../modals/ServerSettingsModal";
 import { useGuildStore } from "../../stores/guildStore";
 
 export const AppLayout: React.FC = () => {
@@ -16,6 +17,7 @@ export const AppLayout: React.FC = () => {
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isJoinServerOpen, setIsJoinServerOpen] = useState(false);
+  const [isServerSettingsOpen, setIsServerSettingsOpen] = useState(false);
   const [showMemberList, setShowMemberList] = useState(true);
   const [channelModalType, setChannelModalType] = useState<0 | 2>(0);
 
@@ -34,6 +36,7 @@ export const AppLayout: React.FC = () => {
         onOpenCreateChannel={handleOpenCreateChannel}
         onOpenCreateServer={() => setIsCreateServerOpen(true)}
         onOpenInvite={() => setIsInviteOpen(true)}
+        onOpenServerSettings={() => setIsServerSettingsOpen(true)}
       />
 
       {/* 3. Main Content Area + MemberList */}
@@ -55,11 +58,18 @@ export const AppLayout: React.FC = () => {
         initialType={channelModalType}
       />
       {currentGuildId && (
-        <InviteModal
-          open={isInviteOpen}
-          onOpenChange={setIsInviteOpen}
-          guildId={currentGuildId}
-        />
+        <>
+          <InviteModal
+            open={isInviteOpen}
+            onOpenChange={setIsInviteOpen}
+            guildId={currentGuildId}
+          />
+          <ServerSettingsModal
+            open={isServerSettingsOpen}
+            onOpenChange={setIsServerSettingsOpen}
+            guildId={currentGuildId}
+          />
+        </>
       )}
       <JoinServerModal
         open={isJoinServerOpen}

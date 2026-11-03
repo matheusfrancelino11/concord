@@ -17,6 +17,13 @@ import {
   InviteResponse,
   CreateInvitePayload,
   VoiceTokenResponse,
+  Ban,
+  Role,
+  CreateRolePayload,
+  UpdateRolePayload,
+  UpdateMemberPayload,
+  CreateBanPayload,
+  UpdateGuildPayload,
 } from "../types";
 
 // Base URL configuration with Vite env fallback
@@ -308,6 +315,13 @@ export const api = {
         method: "DELETE",
       });
     },
+
+    update: async (guildId: string, payload: UpdateGuildPayload): Promise<GuildDetail> => {
+      return request<GuildDetail>(`/guilds/${guildId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+    },
   },
 
   channels: {
@@ -404,6 +418,80 @@ export const api = {
     list: async (guildId: string): Promise<Member[]> => {
       return request<Member[]>(`/guilds/${guildId}/members`, {
         method: "GET",
+      });
+    },
+
+    update: async (guildId: string, userId: string, payload: UpdateMemberPayload): Promise<Member> => {
+      return request<Member>(`/guilds/${guildId}/members/${userId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+    },
+
+    addRole: async (guildId: string, userId: string, roleId: string): Promise<void> => {
+      return request<void>(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, {
+        method: "PUT",
+      });
+    },
+
+    removeRole: async (guildId: string, userId: string, roleId: string): Promise<void> => {
+      return request<void>(`/guilds/${guildId}/members/${userId}/roles/${roleId}`, {
+        method: "DELETE",
+      });
+    },
+
+    kick: async (guildId: string, userId: string): Promise<void> => {
+      return request<void>(`/guilds/${guildId}/members/${userId}`, {
+        method: "DELETE",
+      });
+    },
+  },
+
+  roles: {
+    list: async (guildId: string): Promise<Role[]> => {
+      return request<Role[]>(`/guilds/${guildId}/roles`, {
+        method: "GET",
+      });
+    },
+
+    create: async (guildId: string, payload: CreateRolePayload): Promise<Role> => {
+      return request<Role>(`/guilds/${guildId}/roles`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    },
+
+    update: async (guildId: string, roleId: string, payload: UpdateRolePayload): Promise<Role> => {
+      return request<Role>(`/guilds/${guildId}/roles/${roleId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+    },
+
+    delete: async (guildId: string, roleId: string): Promise<void> => {
+      return request<void>(`/guilds/${guildId}/roles/${roleId}`, {
+        method: "DELETE",
+      });
+    },
+  },
+
+  bans: {
+    list: async (guildId: string): Promise<Ban[]> => {
+      return request<Ban[]>(`/guilds/${guildId}/bans`, {
+        method: "GET",
+      });
+    },
+
+    create: async (guildId: string, userId: string, payload?: CreateBanPayload): Promise<void> => {
+      return request<void>(`/guilds/${guildId}/bans/${userId}`, {
+        method: "PUT",
+        body: JSON.stringify(payload || {}),
+      });
+    },
+
+    remove: async (guildId: string, userId: string): Promise<void> => {
+      return request<void>(`/guilds/${guildId}/bans/${userId}`, {
+        method: "DELETE",
       });
     },
   },

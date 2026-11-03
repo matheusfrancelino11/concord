@@ -4,7 +4,7 @@ import { useChannelStore } from "../../stores/channelStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useMessageStore } from "../../stores/messageStore";
 import { useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
-import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic, MicOff, Headphones, Tv } from "lucide-react";
+import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic, MicOff, Headphones, Tv, Settings } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { UserFooter } from "./UserFooter";
 import { VoiceControls } from "../voice/VoiceControls";
@@ -13,12 +13,14 @@ interface ChannelListProps {
   onOpenCreateChannel: (type: 0 | 2) => void;
   onOpenCreateServer: () => void;
   onOpenInvite?: () => void;
+  onOpenServerSettings?: () => void;
 }
 
 export const ChannelList: React.FC<ChannelListProps> = ({
   onOpenCreateChannel,
   onOpenCreateServer,
   onOpenInvite,
+  onOpenServerSettings,
 }) => {
   const { user } = useAuthStore();
   const { guilds, selectedGuildId, activeGuildId, deleteGuild } = useGuildStore();
@@ -97,8 +99,18 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                     onClick={onOpenInvite}
                     className="flex items-center justify-between px-2.5 py-2 rounded text-[#5865F2] hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none font-medium"
                   >
-                    <span>Invite People</span>
+                    <span>Convidar Pessoas</span>
                     <UserPlus className="w-4 h-4" />
+                  </DropdownMenu.Item>
+                )}
+
+                {onOpenServerSettings && isOwner && (
+                  <DropdownMenu.Item
+                    onClick={onOpenServerSettings}
+                    className="flex items-center justify-between px-2.5 py-2 rounded text-[#dbdee1] hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+                  >
+                    <span>Configurações do Servidor</span>
+                    <Settings className="w-4 h-4" />
                   </DropdownMenu.Item>
                 )}
 
@@ -106,7 +118,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                   onClick={() => onOpenCreateChannel(0)}
                   className="flex items-center justify-between px-2.5 py-2 rounded text-[#949ba4] hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
                 >
-                  <span>Create Channel</span>
+                  <span>Criar Canal</span>
                   <Plus className="w-4 h-4" />
                 </DropdownMenu.Item>
 

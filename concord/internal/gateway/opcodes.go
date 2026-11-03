@@ -31,6 +31,11 @@ const (
 	EventMemberAdd        = "GUILD_MEMBER_ADD"
 	EventMemberRemove     = "GUILD_MEMBER_REMOVE"
 	EventMemberUpdate     = "GUILD_MEMBER_UPDATE"
+	EventGuildRoleCreate  = "GUILD_ROLE_CREATE"
+	EventGuildRoleUpdate  = "GUILD_ROLE_UPDATE"
+	EventGuildRoleDelete  = "GUILD_ROLE_DELETE"
+	EventGuildBanAdd      = "GUILD_BAN_ADD"
+	EventGuildBanRemove   = "GUILD_BAN_REMOVE"
 	EventResumed          = "RESUMED"
 )
 

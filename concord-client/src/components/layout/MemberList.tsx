@@ -1,9 +1,11 @@
 import React, { useMemo } from "react";
-import { useGuildStore, EMPTY_MEMBERS } from "../../stores/guildStore";
+import * as ContextMenu from "@radix-ui/react-context-menu";
+import { useGuildStore, EMPTY_MEMBERS, EMPTY_ROLES } from "../../stores/guildStore";
+import { useAuthStore } from "../../stores/authStore";
 import { usePresenceStore } from "../../stores/presenceStore";
 import { useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
-import { Member, UserStatus } from "../../types";
-import { Crown, Tv } from "lucide-react";
+import { Member, UserStatus, Role } from "../../types";
+import { Crown, Tv, Shield, UserMinus, Ban as BanIcon, Check, ChevronRight } from "lucide-react";
 
 interface MemberListProps {
   guildId: string;
@@ -46,13 +48,26 @@ const getStatusTitle = (status: UserStatus): string => {
 };
 
 export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
-  const { guilds, membersByGuild } = useGuildStore();
+  const { user: currentUser } = useAuthStore();
+  const {
+    guilds,
+    membersByGuild,
+    rolesByGuild,
+    kickMember,
+    banMember,
+    addMemberRole,
+    removeMemberRole,
+  } = useGuildStore();
+
   const presences = usePresenceStore((s) => s.presences);
   const rawVoiceStates = useVoiceStore((s) => s.voiceStatesByGuild[guildId]);
   const voiceStates = rawVoiceStates || EMPTY_VOICE_STATES;
 
   const currentGuild = guilds.find((g) => g.id === guildId);
   const members = membersByGuild[guildId] || EMPTY_MEMBERS;
+  const roles = rolesByGuild[guildId] || EMPTY_ROLES;
+
+  const isCallerOwner = currentGuild?.owner_id === currentUser?.id;
 
   const streamingUserIds = useMemo(() => {
     return new Set(voiceStates.filter((vs) => vs.self_stream).map((vs) => vs.user_id));
@@ -72,7 +87,6 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
       }
     }
 
-    // Sort alphabetically by displayName
     const sortFn = (a: { member: Member }, b: { member: Member }) => {
       const nameA = a.member.nick || a.member.user?.global_name || a.member.user?.username || "";
       const nameB = b.member.nick || b.member.user?.global_name || b.member.user?.username || "";
@@ -87,71 +101,197 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
 
   const isOwner = (userId: string) => currentGuild?.owner_id === userId;
 
+  // Determine member's highest role color
+  const getMemberColor = (memberRoles?: string[]): string | undefined => {
+    if (!memberRoles || memberRoles.length === 0) return undefined;
+    const assignedRoles = memberRoles
+      .map((rid) => roles.find((r) => r.id === rid))
+      .filter((r): r is Role => Boolean(r && r.color > 0))
+      .sort((a, b) => b.position - a.position);
+
+    if (assignedRoles.length > 0) {
+      return `#${assignedRoles[0].color.toString(16).padStart(6, "0")}`;
+    }
+    return undefined;
+  };
+
+  const handleKick = async (member: Member) => {
+    const name = member.nick || member.user?.global_name || member.user?.username;
+    if (confirm(`Expulsar ${name} do servidor?`)) {
+      try {
+        await kickMember(guildId, member.user_id);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Erro ao expulsar membro");
+      }
+    }
+  };
+
+  const handleBan = async (member: Member) => {
+    const name = member.nick || member.user?.global_name || member.user?.username;
+    const reason = prompt(`Motivo do banimento para ${name}:`, "Violação das regras");
+    if (reason !== null) {
+      try {
+        await banMember(guildId, member.user_id, {
+          reason: reason || undefined,
+          delete_message_days: 1,
+        });
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Erro ao banir membro");
+      }
+    }
+  };
+
+  const handleToggleRole = async (member: Member, roleId: string) => {
+    const hasRole = (member.roles || []).includes(roleId);
+    try {
+      if (hasRole) {
+        await removeMemberRole(guildId, member.user_id, roleId);
+      } else {
+        await addMemberRole(guildId, member.user_id, roleId);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao atualizar cargo");
+    }
+  };
+
   const renderMemberItem = (item: { member: Member; status: UserStatus }) => {
     const { member, status } = item;
     const user = member.user;
     const displayName = member.nick || user?.global_name || user?.username || "Unknown";
     const username = user?.username || "";
     const isGuildOwner = isOwner(member.user_id);
+    const isSelf = member.user_id === currentUser?.id;
+    const roleColor = getMemberColor(member.roles);
 
     return (
-      <div
-        key={member.user_id}
-        className="group flex items-center gap-3 px-2 py-1.5 rounded-[4px] hover:bg-[#35373c]/60 cursor-pointer transition-colors"
-      >
-        {/* Avatar with status indicator */}
-        <div className="relative shrink-0">
-          <div className="w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center text-xs font-semibold text-white overflow-hidden">
-            {user?.avatar ? (
-              <img
-                src={user.avatar}
-                alt={displayName}
-                className="w-full h-full object-cover"
+      <ContextMenu.Root key={member.user_id}>
+        <ContextMenu.Trigger asChild>
+          <div className="group flex items-center gap-3 px-2 py-1.5 rounded-[4px] hover:bg-[#35373c]/60 cursor-pointer transition-colors">
+            {/* Avatar with status indicator */}
+            <div className="relative shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center text-xs font-semibold text-white overflow-hidden">
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={displayName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  getInitials(displayName)
+                )}
+              </div>
+              {/* Status Badge */}
+              <span
+                title={getStatusTitle(status)}
+                className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#2b2d31] ${getStatusColor(
+                  status
+                )}`}
               />
-            ) : (
-              getInitials(displayName)
-            )}
-          </div>
-          {/* Status Badge */}
-          <span
-            title={getStatusTitle(status)}
-            className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#2b2d31] ${getStatusColor(
-              status
-            )}`}
-          />
-        </div>
-
-        {/* Name and Crown */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`text-sm font-medium truncate ${
-                status === "offline"
-                  ? "text-[#949ba4] group-hover:text-[#dbdee1]"
-                  : "text-[#dbdee1] group-hover:text-white"
-              }`}
-            >
-              {displayName}
-            </span>
-            {streamingUserIds.has(member.user_id) && (
-              <span className="flex items-center gap-0.5 px-1 py-0.2 rounded bg-[#f23f43] text-white text-[9px] font-bold shrink-0">
-                <Tv className="w-2.5 h-2.5" />
-                <span>LIVE</span>
-              </span>
-            )}
-            {isGuildOwner && (
-              <span title="Server Owner" className="shrink-0 flex items-center">
-                <Crown className="w-3.5 h-3.5 text-[#f0b232]" />
-              </span>
-            )}
-          </div>
-          {user?.global_name && user.global_name !== username && (
-            <div className="text-[11px] text-[#949ba4] truncate -mt-0.5">
-              @{username}
             </div>
-          )}
-        </div>
-      </div>
+
+            {/* Name and Crown */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span
+                  style={roleColor ? { color: roleColor } : undefined}
+                  className={`text-sm font-medium truncate ${
+                    roleColor
+                      ? ""
+                      : status === "offline"
+                      ? "text-[#949ba4] group-hover:text-[#dbdee1]"
+                      : "text-[#dbdee1] group-hover:text-white"
+                  }`}
+                >
+                  {displayName}
+                </span>
+                {streamingUserIds.has(member.user_id) && (
+                  <span className="flex items-center gap-0.5 px-1 py-0.2 rounded bg-[#f23f43] text-white text-[9px] font-bold shrink-0">
+                    <Tv className="w-2.5 h-2.5" />
+                    <span>LIVE</span>
+                  </span>
+                )}
+                {isGuildOwner && (
+                  <span title="Dono do Servidor" className="shrink-0 flex items-center">
+                    <Crown className="w-3.5 h-3.5 text-[#f0b232]" />
+                  </span>
+                )}
+              </div>
+              {user?.global_name && user.global_name !== username && (
+                <div className="text-[11px] text-[#949ba4] truncate -mt-0.5">
+                  @{username}
+                </div>
+              )}
+            </div>
+          </div>
+        </ContextMenu.Trigger>
+
+        {/* Right-click Context Menu */}
+        <ContextMenu.Portal>
+          <ContextMenu.Content className="w-52 bg-[#111214] border border-[#2b2d31] p-1.5 rounded-md shadow-xl text-sm font-medium z-50 text-[#dbdee1] animate-in fade-in-0 zoom-in-95">
+            <div className="px-2 py-1 text-xs font-bold text-[#949ba4] uppercase truncate">
+              {displayName}
+            </div>
+            <ContextMenu.Separator className="h-[1px] bg-[#2b2d31] my-1" />
+
+            {/* Roles Submenu */}
+            {isCallerOwner && roles.filter((r) => r.name !== "@everyone").length > 0 && (
+              <ContextMenu.Sub>
+                <ContextMenu.SubTrigger className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none">
+                  <span className="flex items-center gap-2">
+                    <Shield className="w-3.5 h-3.5" />
+                    Cargos
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </ContextMenu.SubTrigger>
+                <ContextMenu.Portal>
+                  <ContextMenu.SubContent className="w-48 bg-[#111214] border border-[#2b2d31] p-1.5 rounded-md shadow-xl text-xs font-medium z-50 text-[#dbdee1]">
+                    {roles
+                      .filter((r) => r.name !== "@everyone")
+                      .map((r) => {
+                        const hasRole = (member.roles || []).includes(r.id);
+                        const hex = r.color ? `#${r.color.toString(16).padStart(6, "0")}` : "#99aab5";
+                        return (
+                          <ContextMenu.Item
+                            key={r.id}
+                            onClick={() => handleToggleRole(member, r.id)}
+                            className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+                          >
+                            <span className="flex items-center gap-2 truncate">
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: hex }} />
+                              {r.name}
+                            </span>
+                            {hasRole && <Check className="w-3.5 h-3.5 text-[#23a55a]" />}
+                          </ContextMenu.Item>
+                        );
+                      })}
+                  </ContextMenu.SubContent>
+                </ContextMenu.Portal>
+              </ContextMenu.Sub>
+            )}
+
+            {/* Moderation: Kick / Ban */}
+            {isCallerOwner && !isSelf && !isGuildOwner && (
+              <>
+                <ContextMenu.Separator className="h-[1px] bg-[#2b2d31] my-1" />
+                <ContextMenu.Item
+                  onClick={() => handleKick(member)}
+                  className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs text-[#f23f43] hover:bg-[#f23f43] hover:text-white cursor-pointer transition-colors outline-none"
+                >
+                  <span>Expulsar {displayName}</span>
+                  <UserMinus className="w-3.5 h-3.5" />
+                </ContextMenu.Item>
+                <ContextMenu.Item
+                  onClick={() => handleBan(member)}
+                  className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs text-[#f23f43] hover:bg-[#f23f43] hover:text-white cursor-pointer transition-colors outline-none"
+                >
+                  <span>Banir {displayName}</span>
+                  <BanIcon className="w-3.5 h-3.5" />
+                </ContextMenu.Item>
+              </>
+            )}
+          </ContextMenu.Content>
+        </ContextMenu.Portal>
+      </ContextMenu.Root>
     );
   };
 
@@ -186,7 +326,7 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
 
       {members.length === 0 && (
         <div className="p-4 text-center text-xs text-[#949ba4]">
-          Loading members...
+          Carregando membros...
         </div>
       )}
     </aside>

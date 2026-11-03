@@ -67,12 +67,15 @@ func setupTestHarness(t *testing.T) *testHarness {
 	messageService := service.NewMessageService(pool, sf, hubManager)
 	voiceService := service.NewVoiceService(pool, cfg.LiveKitURL, cfg.LiveKitKey, cfg.LiveKitSecret)
 	inviteService := service.NewInviteService(pool, guildService)
+	permService := service.NewPermissionService(pool)
+	adminService := service.NewAdminService(pool, sf, permService, guildService)
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
 	gatewayHandler := gateway.NewHandler(hubManager, sessionStore, presenceTracker, authService, guildService, voiceService)
 	messageHandler := api.NewMessageHandler(messageService)
 	inviteHandler := api.NewInviteHandler(inviteService, hubManager, sessionStore)
 	voiceHandler := api.NewVoiceHandler(voiceService)
+	adminHandler := api.NewAdminHandler(adminService, hubManager)
 
 	router := api.NewRouter(&api.RouterDeps{
 		Config:         cfg,
@@ -83,6 +86,7 @@ func setupTestHarness(t *testing.T) *testHarness {
 		MessageHandler: messageHandler,
 		InviteHandler:  inviteHandler,
 		VoiceHandler:   voiceHandler,
+		AdminHandler:   adminHandler,
 		GatewayHandler: gatewayHandler,
 		AuthMiddleware: authMiddleware,
 	})

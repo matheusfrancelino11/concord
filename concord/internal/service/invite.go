@@ -202,6 +202,16 @@ func (s *inviteService) UseInvite(
 
 	guildID := invite.GuildID
 
+	// Check if user is banned from this guild
+	var isBanned bool
+	checkBanSQL := `SELECT EXISTS(SELECT 1 FROM bans WHERE guild_id = $1 AND user_id = $2)`
+	if err := s.db.QueryRow(ctx, checkBanSQL, guildID, callerID).Scan(&isBanned); err != nil {
+		return nil, nil, fmt.Errorf("check ban: %w", err)
+	}
+	if isBanned {
+		return nil, nil, ErrBanned
+	}
+
 	// Check if already a member
 	var isMember bool
 	checkSQL := `SELECT EXISTS(SELECT 1 FROM members WHERE guild_id = $1 AND user_id = $2)`
@@ -268,10 +278,18 @@ func (s *inviteService) UseInvite(
 	userSQL := `SELECT id, username, global_name, avatar FROM users WHERE id = $1`
 	_ = s.db.QueryRow(ctx, userSQL, callerID).Scan(&u.ID, &u.Username, &u.GlobalName, &u.Avatar)
 
+	var assignedRoles []snowflake.ID
+	if everyoneRoleID != 0 {
+		assignedRoles = []snowflake.ID{everyoneRoleID}
+	} else {
+		assignedRoles = make([]snowflake.ID, 0)
+	}
+
 	memberResp := &models.MemberResponse{
 		GuildID:  guildID,
 		UserID:   callerID,
 		Nick:     m.Nick,
+		Roles:    assignedRoles,
 		JoinedAt: m.JoinedAt,
 		Deaf:     m.Deaf,
 		Mute:     m.Mute,
@@ -315,6 +333,19 @@ func (s *inviteService) ListMembers(
 	}
 	defer rows.Close()
 
+	// Query member roles for the guild
+	memberRolesMap := make(map[snowflake.ID][]snowflake.ID)
+	mrRows, err := s.db.Query(ctx, `SELECT user_id, role_id FROM member_roles WHERE guild_id = $1`, guildID)
+	if err == nil {
+		defer mrRows.Close()
+		for mrRows.Next() {
+			var uID, rID snowflake.ID
+			if err := mrRows.Scan(&uID, &rID); err == nil {
+				memberRolesMap[uID] = append(memberRolesMap[uID], rID)
+			}
+		}
+	}
+
 	members := make([]models.MemberResponse, 0)
 	for rows.Next() {
 		var m models.MemberResponse
@@ -332,6 +363,11 @@ func (s *inviteService) ListMembers(
 			&m.User.Avatar,
 		); err != nil {
 			return nil, fmt.Errorf("scan member: %w", err)
+		}
+		if roles, ok := memberRolesMap[m.UserID]; ok {
+			m.Roles = roles
+		} else {
+			m.Roles = make([]snowflake.ID, 0)
 		}
 		members = append(members, m)
 	}

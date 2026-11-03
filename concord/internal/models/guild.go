@@ -87,14 +87,15 @@ type Member struct {
 
 // MemberResponse wraps member with nested user profile
 type MemberResponse struct {
-	GuildID  snowflake.ID `json:"guild_id"`
-	UserID   snowflake.ID `json:"user_id"`
-	Nick     *string      `json:"nick"`
-	JoinedAt time.Time    `json:"joined_at"`
-	Deaf     bool         `json:"deaf"`
-	Mute     bool         `json:"mute"`
-	Flags    int          `json:"flags"`
-	User     UserSummary  `json:"user"`
+	GuildID  snowflake.ID   `json:"guild_id"`
+	UserID   snowflake.ID   `json:"user_id"`
+	Nick     *string        `json:"nick"`
+	Roles    []snowflake.ID `json:"roles"`
+	JoinedAt time.Time      `json:"joined_at"`
+	Deaf     bool           `json:"deaf"`
+	Mute     bool           `json:"mute"`
+	Flags    int            `json:"flags"`
+	User     UserSummary    `json:"user"`
 }
 
 // UserSummary is the concise user profile embedded in member responses

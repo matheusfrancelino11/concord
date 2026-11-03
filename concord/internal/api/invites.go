@@ -108,6 +108,10 @@ func (h *InviteHandler) UseInvite(w http.ResponseWriter, r *http.Request) {
 			WriteJSON(w, http.StatusNotFound, ErrorResponse{Error: "Invite not found or has expired"})
 			return
 		}
+		if errors.Is(err, service.ErrBanned) {
+			WriteJSON(w, http.StatusForbidden, ErrorResponse{Error: "You are banned from this server"})
+			return
+		}
 		WriteJSON(w, http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}

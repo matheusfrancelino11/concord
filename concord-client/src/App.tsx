@@ -13,6 +13,7 @@ import {
   VoiceState,
   Member,
   GuildDetail,
+  Role,
 } from "./types";
 import { LoginView } from "./components/auth/LoginView";
 import { RegisterView } from "./components/auth/RegisterView";
@@ -114,6 +115,58 @@ export const App: React.FC = () => {
       }
     );
 
+    const unsubMemberUpdate = gateway.on<Member>(
+      GatewayEvent.GUILD_MEMBER_UPDATE,
+      (payload) => {
+        useGuildStore.getState().handleMemberUpdate(payload);
+      }
+    );
+
+    const unsubMemberRemove = gateway.on<{ guild_id: string; user_id: string }>(
+      GatewayEvent.GUILD_MEMBER_REMOVE,
+      (payload) => {
+        if (payload.guild_id && payload.user_id) {
+          useGuildStore.getState().handleMemberRemove(payload.guild_id, payload.user_id);
+        }
+      }
+    );
+
+    const unsubRoleCreate = gateway.on<{ guild_id: string; role: Role }>(
+      GatewayEvent.GUILD_ROLE_CREATE,
+      (payload) => {
+        if (payload.guild_id && payload.role) {
+          useGuildStore.getState().handleRoleCreate(payload.guild_id, payload.role);
+        }
+      }
+    );
+
+    const unsubRoleUpdate = gateway.on<{ guild_id: string; role: Role }>(
+      GatewayEvent.GUILD_ROLE_UPDATE,
+      (payload) => {
+        if (payload.guild_id && payload.role) {
+          useGuildStore.getState().handleRoleUpdate(payload.guild_id, payload.role);
+        }
+      }
+    );
+
+    const unsubRoleDelete = gateway.on<{ guild_id: string; role_id: string }>(
+      GatewayEvent.GUILD_ROLE_DELETE,
+      (payload) => {
+        if (payload.guild_id && payload.role_id) {
+          useGuildStore.getState().handleRoleDelete(payload.guild_id, payload.role_id);
+        }
+      }
+    );
+
+    const unsubGuildUpdate = gateway.on<Partial<GuildDetail> & { id: string }>(
+      GatewayEvent.GUILD_UPDATE,
+      (payload) => {
+        if (payload.id) {
+          useGuildStore.getState().handleGuildUpdate(payload);
+        }
+      }
+    );
+
     const unsubGuildCreate = gateway.on<GuildDetail>(
       GatewayEvent.GUILD_CREATE,
       (guild) => {
@@ -143,6 +196,12 @@ export const App: React.FC = () => {
       unsubPresenceUpdate();
       unsubVoiceStateUpdate();
       unsubMemberAdd();
+      unsubMemberUpdate();
+      unsubMemberRemove();
+      unsubRoleCreate();
+      unsubRoleUpdate();
+      unsubRoleDelete();
+      unsubGuildUpdate();
       unsubGuildCreate();
       clearInterval(typingTimer);
       gateway.disconnect();

@@ -64,12 +64,72 @@ export interface Member {
   guild_id: Snowflake;
   user_id: Snowflake;
   nick?: string | null;
+  roles?: Snowflake[];
   joined_at: string;
   deaf: boolean;
   mute: boolean;
   flags: number;
   user?: UserSummary;
 }
+
+export interface Ban {
+  user: UserSummary;
+  reason?: string | null;
+  created_at: string;
+}
+
+export interface CreateRolePayload {
+  name: string;
+  permissions?: string;
+  color?: number;
+  hoist?: boolean;
+  mentionable?: boolean;
+}
+
+export interface UpdateRolePayload {
+  name?: string;
+  permissions?: string;
+  color?: number;
+  hoist?: boolean;
+  mentionable?: boolean;
+  position?: number;
+}
+
+export interface UpdateMemberPayload {
+  nick?: string | null;
+  mute?: boolean;
+  deaf?: boolean;
+  roles?: Snowflake[];
+}
+
+export interface CreateBanPayload {
+  reason?: string;
+  delete_message_days?: number;
+}
+
+export interface UpdateGuildPayload {
+  name?: string;
+  icon?: string | null;
+}
+
+export const Permissions = {
+  CREATE_INSTANT_INVITE: 1n << 0n,
+  KICK_MEMBERS: 1n << 1n,
+  BAN_MEMBERS: 1n << 2n,
+  ADMINISTRATOR: 1n << 3n,
+  MANAGE_CHANNELS: 1n << 4n,
+  MANAGE_GUILD: 1n << 5n,
+  VIEW_CHANNEL: 1n << 10n,
+  SEND_MESSAGES: 1n << 11n,
+  READ_MESSAGE_HISTORY: 1n << 16n,
+  CONNECT: 1n << 20n,
+  SPEAK: 1n << 21n,
+  MUTE_MEMBERS: 1n << 22n,
+  DEAFEN_MEMBERS: 1n << 23n,
+  MOVE_MEMBERS: 1n << 24n,
+  MANAGE_ROLES: 1n << 28n,
+} as const;
+
 
 // ==========================================
 // Channel Models
@@ -189,6 +249,11 @@ export const GatewayEvent = {
   GUILD_MEMBER_ADD: "GUILD_MEMBER_ADD",
   GUILD_MEMBER_REMOVE: "GUILD_MEMBER_REMOVE",
   GUILD_MEMBER_UPDATE: "GUILD_MEMBER_UPDATE",
+  GUILD_ROLE_CREATE: "GUILD_ROLE_CREATE",
+  GUILD_ROLE_UPDATE: "GUILD_ROLE_UPDATE",
+  GUILD_ROLE_DELETE: "GUILD_ROLE_DELETE",
+  GUILD_BAN_ADD: "GUILD_BAN_ADD",
+  GUILD_BAN_REMOVE: "GUILD_BAN_REMOVE",
   RESUMED: "RESUMED",
 } as const;
 

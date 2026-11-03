@@ -1,15 +1,29 @@
 import { create } from "zustand";
-import { Guild, GuildDetail, CreateGuildPayload, Member } from "../types";
+import {
+  Guild,
+  GuildDetail,
+  CreateGuildPayload,
+  Member,
+  Role,
+  Ban,
+  CreateRolePayload,
+  UpdateRolePayload,
+  UpdateMemberPayload,
+  CreateBanPayload,
+  UpdateGuildPayload,
+} from "../types";
 import { api, ApiError } from "../api/client";
 import { useChannelStore } from "./channelStore";
 
 export const EMPTY_MEMBERS: Member[] = [];
+export const EMPTY_ROLES: Role[] = [];
 
 export interface GuildState {
   guilds: Guild[];
   activeGuildId: string | null;
   selectedGuildId: string | null;
   membersByGuild: Record<string, Member[]>;
+  rolesByGuild: Record<string, Role[]>;
   isLoading: boolean;
   error: string | null;
 
@@ -17,12 +31,38 @@ export interface GuildState {
   fetchGuilds: () => Promise<void>;
   selectGuild: (guildId: string) => void;
   createGuild: (payload: CreateGuildPayload) => Promise<GuildDetail>;
+  updateGuild: (guildId: string, payload: UpdateGuildPayload) => Promise<GuildDetail>;
   deleteGuild: (guildId: string) => Promise<void>;
   joinGuildWithInvite: (code: string) => Promise<GuildDetail>;
   fetchMembers: (guildId: string) => Promise<void>;
+  fetchRoles: (guildId: string) => Promise<Role[]>;
   setMembers: (guildId: string, members: Member[]) => void;
+  setRoles: (guildId: string, roles: Role[]) => void;
   addMember: (guildId: string, member: Member) => void;
   addGuildFromGateway: (guild: GuildDetail) => void;
+
+  // Role Management
+  createRole: (guildId: string, payload: CreateRolePayload) => Promise<Role>;
+  updateRole: (guildId: string, roleId: string, payload: UpdateRolePayload) => Promise<Role>;
+  deleteRole: (guildId: string, roleId: string) => Promise<void>;
+
+  // Member Management & Moderation
+  addMemberRole: (guildId: string, userId: string, roleId: string) => Promise<void>;
+  removeMemberRole: (guildId: string, userId: string, roleId: string) => Promise<void>;
+  updateMember: (guildId: string, userId: string, payload: UpdateMemberPayload) => Promise<Member>;
+  kickMember: (guildId: string, userId: string) => Promise<void>;
+  banMember: (guildId: string, userId: string, payload?: CreateBanPayload) => Promise<void>;
+  unbanMember: (guildId: string, userId: string) => Promise<void>;
+  fetchBans: (guildId: string) => Promise<Ban[]>;
+
+  // Gateway event handlers
+  handleGuildUpdate: (guild: Partial<GuildDetail> & { id: string }) => void;
+  handleRoleCreate: (guildId: string, role: Role) => void;
+  handleRoleUpdate: (guildId: string, role: Role) => void;
+  handleRoleDelete: (guildId: string, roleId: string) => void;
+  handleMemberUpdate: (member: Member) => void;
+  handleMemberRemove: (guildId: string, userId: string) => void;
+
   clearError: () => void;
   reset: () => void;
 }
@@ -32,6 +72,7 @@ export const useGuildStore = create<GuildState>((set, get) => ({
   activeGuildId: null,
   selectedGuildId: null,
   membersByGuild: {},
+  rolesByGuild: {},
   isLoading: false,
   error: null,
 
@@ -55,10 +96,11 @@ export const useGuildStore = create<GuildState>((set, get) => ({
         error: null,
       });
 
-      // Synchronize channels and members for the selected guild
+      // Synchronize channels, members, and roles for selected guild
       if (nextActiveId) {
         useChannelStore.getState().fetchChannels(nextActiveId);
         get().fetchMembers(nextActiveId);
+        get().fetchRoles(nextActiveId);
       } else {
         useChannelStore.getState().reset();
       }
@@ -77,10 +119,11 @@ export const useGuildStore = create<GuildState>((set, get) => ({
       selectedGuildId: guildId,
     });
 
-    // Fetch channels and members for newly selected guild
+    // Fetch channels, members, and roles for newly selected guild
     if (guildId) {
       useChannelStore.getState().fetchChannels(guildId);
       get().fetchMembers(guildId);
+      get().fetchRoles(guildId);
     } else {
       useChannelStore.getState().reset();
     }
@@ -100,11 +143,36 @@ export const useGuildStore = create<GuildState>((set, get) => ({
     }
   },
 
+  fetchRoles: async (guildId: string): Promise<Role[]> => {
+    try {
+      const roles = await api.roles.list(guildId);
+      set((state) => ({
+        rolesByGuild: {
+          ...state.rolesByGuild,
+          [guildId]: roles || EMPTY_ROLES,
+        },
+      }));
+      return roles || EMPTY_ROLES;
+    } catch (err) {
+      console.error(`[guildStore] Failed to fetch roles for guild ${guildId}:`, err);
+      return EMPTY_ROLES;
+    }
+  },
+
   setMembers: (guildId: string, members: Member[]) => {
     set((state) => ({
       membersByGuild: {
         ...state.membersByGuild,
         [guildId]: members || EMPTY_MEMBERS,
+      },
+    }));
+  },
+
+  setRoles: (guildId: string, roles: Role[]) => {
+    set((state) => ({
+      rolesByGuild: {
+        ...state.rolesByGuild,
+        [guildId]: roles || EMPTY_ROLES,
       },
     }));
   },
@@ -148,6 +216,10 @@ export const useGuildStore = create<GuildState>((set, get) => ({
             ...state.membersByGuild,
             [guild.id]: guild.members || EMPTY_MEMBERS,
           },
+          rolesByGuild: {
+            ...state.rolesByGuild,
+            [guild.id]: guild.roles || EMPTY_ROLES,
+          },
           isLoading: false,
           error: null,
         };
@@ -185,6 +257,10 @@ export const useGuildStore = create<GuildState>((set, get) => ({
           ...state.membersByGuild,
           [guild.id]: guild.members || state.membersByGuild[guild.id] || EMPTY_MEMBERS,
         },
+        rolesByGuild: {
+          ...state.rolesByGuild,
+          [guild.id]: guild.roles || state.rolesByGuild[guild.id] || EMPTY_ROLES,
+        },
       };
     });
 
@@ -214,12 +290,14 @@ export const useGuildStore = create<GuildState>((set, get) => ({
           ...state.membersByGuild,
           [newGuild.id]: newGuild.members || EMPTY_MEMBERS,
         },
+        rolesByGuild: {
+          ...state.rolesByGuild,
+          [newGuild.id]: newGuild.roles || EMPTY_ROLES,
+        },
         isLoading: false,
         error: null,
       }));
 
-      // Invariant: Backend automatically created `#geral` and `@everyone`.
-      // Synchronize channelStore directly from newGuild.channels!
       if (newGuild.channels && newGuild.channels.length > 0) {
         useChannelStore.getState().setChannels(newGuild.channels, newGuild.id);
       } else {
@@ -229,6 +307,25 @@ export const useGuildStore = create<GuildState>((set, get) => ({
       return newGuild;
     } catch (err: unknown) {
       const message = err instanceof ApiError ? err.message : "Failed to create server";
+      set({ isLoading: false, error: message });
+      throw err;
+    }
+  },
+
+  updateGuild: async (guildId: string, payload: UpdateGuildPayload): Promise<GuildDetail> => {
+    set({ isLoading: true, error: null });
+    try {
+      const updated = await api.guilds.update(guildId, payload);
+      set((state) => ({
+        guilds: state.guilds.map((g) =>
+          g.id === guildId ? { ...g, name: updated.name, icon: updated.icon } : g
+        ),
+        isLoading: false,
+        error: null,
+      }));
+      return updated;
+    } catch (err: unknown) {
+      const message = err instanceof ApiError ? err.message : "Failed to update server";
       set({ isLoading: false, error: message });
       throw err;
     }
@@ -257,6 +354,7 @@ export const useGuildStore = create<GuildState>((set, get) => ({
       if (nextActiveId) {
         useChannelStore.getState().fetchChannels(nextActiveId);
         get().fetchMembers(nextActiveId);
+        get().fetchRoles(nextActiveId);
       } else {
         useChannelStore.getState().reset();
       }
@@ -267,6 +365,204 @@ export const useGuildStore = create<GuildState>((set, get) => ({
     }
   },
 
+  // Roles API actions
+  createRole: async (guildId: string, payload: CreateRolePayload): Promise<Role> => {
+    const role = await api.roles.create(guildId, payload);
+    set((state) => {
+      const current = state.rolesByGuild[guildId] || EMPTY_ROLES;
+      return {
+        rolesByGuild: {
+          ...state.rolesByGuild,
+          [guildId]: [...current, role],
+        },
+      };
+    });
+    return role;
+  },
+
+  updateRole: async (guildId: string, roleId: string, payload: UpdateRolePayload): Promise<Role> => {
+    const role = await api.roles.update(guildId, roleId, payload);
+    set((state) => {
+      const current = state.rolesByGuild[guildId] || EMPTY_ROLES;
+      return {
+        rolesByGuild: {
+          ...state.rolesByGuild,
+          [guildId]: current.map((r) => (r.id === roleId ? role : r)),
+        },
+      };
+    });
+    return role;
+  },
+
+  deleteRole: async (guildId: string, roleId: string): Promise<void> => {
+    await api.roles.delete(guildId, roleId);
+    set((state) => {
+      const current = state.rolesByGuild[guildId] || EMPTY_ROLES;
+      return {
+        rolesByGuild: {
+          ...state.rolesByGuild,
+          [guildId]: current.filter((r) => r.id !== roleId),
+        },
+      };
+    });
+  },
+
+  // Member API actions
+  addMemberRole: async (guildId: string, userId: string, roleId: string): Promise<void> => {
+    await api.members.addRole(guildId, userId, roleId);
+    set((state) => {
+      const members = state.membersByGuild[guildId] || EMPTY_MEMBERS;
+      return {
+        membersByGuild: {
+          ...state.membersByGuild,
+          [guildId]: members.map((m) => {
+            if (m.user_id !== userId) return m;
+            const currentRoles = m.roles || [];
+            if (currentRoles.includes(roleId)) return m;
+            return { ...m, roles: [...currentRoles, roleId] };
+          }),
+        },
+      };
+    });
+  },
+
+  removeMemberRole: async (guildId: string, userId: string, roleId: string): Promise<void> => {
+    await api.members.removeRole(guildId, userId, roleId);
+    set((state) => {
+      const members = state.membersByGuild[guildId] || EMPTY_MEMBERS;
+      return {
+        membersByGuild: {
+          ...state.membersByGuild,
+          [guildId]: members.map((m) => {
+            if (m.user_id !== userId) return m;
+            return {
+              ...m,
+              roles: (m.roles || []).filter((r) => r !== roleId),
+            };
+          }),
+        },
+      };
+    });
+  },
+
+  updateMember: async (guildId: string, userId: string, payload: UpdateMemberPayload): Promise<Member> => {
+    const updated = await api.members.update(guildId, userId, payload);
+    set((state) => {
+      const members = state.membersByGuild[guildId] || EMPTY_MEMBERS;
+      return {
+        membersByGuild: {
+          ...state.membersByGuild,
+          [guildId]: members.map((m) => (m.user_id === userId ? updated : m)),
+        },
+      };
+    });
+    return updated;
+  },
+
+  kickMember: async (guildId: string, userId: string): Promise<void> => {
+    await api.members.kick(guildId, userId);
+    set((state) => {
+      const members = state.membersByGuild[guildId] || EMPTY_MEMBERS;
+      return {
+        membersByGuild: {
+          ...state.membersByGuild,
+          [guildId]: members.filter((m) => m.user_id !== userId),
+        },
+      };
+    });
+  },
+
+  banMember: async (guildId: string, userId: string, payload?: CreateBanPayload): Promise<void> => {
+    await api.bans.create(guildId, userId, payload);
+    set((state) => {
+      const members = state.membersByGuild[guildId] || EMPTY_MEMBERS;
+      return {
+        membersByGuild: {
+          ...state.membersByGuild,
+          [guildId]: members.filter((m) => m.user_id !== userId),
+        },
+      };
+    });
+  },
+
+  unbanMember: async (guildId: string, userId: string): Promise<void> => {
+    await api.bans.remove(guildId, userId);
+  },
+
+  fetchBans: async (guildId: string): Promise<Ban[]> => {
+    return api.bans.list(guildId);
+  },
+
+  // Gateway event handlers
+  handleGuildUpdate: (guild: Partial<GuildDetail> & { id: string }) => {
+    set((state) => ({
+      guilds: state.guilds.map((g) => (g.id === guild.id ? { ...g, ...guild } : g)),
+    }));
+  },
+
+  handleRoleCreate: (guildId: string, role: Role) => {
+    set((state) => {
+      const current = state.rolesByGuild[guildId] || EMPTY_ROLES;
+      if (current.some((r) => r.id === role.id)) return state;
+      return {
+        rolesByGuild: {
+          ...state.rolesByGuild,
+          [guildId]: [...current, role],
+        },
+      };
+    });
+  },
+
+  handleRoleUpdate: (guildId: string, role: Role) => {
+    set((state) => {
+      const current = state.rolesByGuild[guildId] || EMPTY_ROLES;
+      return {
+        rolesByGuild: {
+          ...state.rolesByGuild,
+          [guildId]: current.map((r) => (r.id === role.id ? role : r)),
+        },
+      };
+    });
+  },
+
+  handleRoleDelete: (guildId: string, roleId: string) => {
+    set((state) => {
+      const current = state.rolesByGuild[guildId] || EMPTY_ROLES;
+      return {
+        rolesByGuild: {
+          ...state.rolesByGuild,
+          [guildId]: current.filter((r) => r.id !== roleId),
+        },
+      };
+    });
+  },
+
+  handleMemberUpdate: (member: Member) => {
+    set((state) => {
+      const current = state.membersByGuild[member.guild_id] || EMPTY_MEMBERS;
+      return {
+        membersByGuild: {
+          ...state.membersByGuild,
+          [member.guild_id]: current.map((m) =>
+            m.user_id === member.user_id ? { ...m, ...member } : m
+          ),
+        },
+      };
+    });
+  },
+
+  handleMemberRemove: (guildId: string, userId: string) => {
+    set((state) => {
+      const current = state.membersByGuild[guildId] || EMPTY_MEMBERS;
+      return {
+        membersByGuild: {
+          ...state.membersByGuild,
+          [guildId]: current.filter((m) => m.user_id !== userId),
+        },
+      };
+    });
+  },
+
   clearError: () => set({ error: null }),
 
   reset: () => {
@@ -275,6 +571,7 @@ export const useGuildStore = create<GuildState>((set, get) => ({
       activeGuildId: null,
       selectedGuildId: null,
       membersByGuild: {},
+      rolesByGuild: {},
       isLoading: false,
       error: null,
     });

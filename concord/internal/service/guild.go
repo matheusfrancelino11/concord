@@ -198,6 +198,7 @@ func (s *guildService) CreateGuild(ctx context.Context, callerID snowflake.ID, r
 			{
 				GuildID:  g.ID,
 				UserID:   callerID,
+				Roles:    []snowflake.ID{roleID},
 				JoinedAt: time.Now(),
 				Deaf:     false,
 				Mute:     false,
@@ -340,6 +341,19 @@ func (s *guildService) GetGuildDetails(ctx context.Context, callerID snowflake.I
 		})
 	}
 
+	// Query member roles for the guild
+	memberRolesMap := make(map[snowflake.ID][]snowflake.ID)
+	mrRows, err := s.db.Query(ctx, `SELECT user_id, role_id FROM member_roles WHERE guild_id = $1`, guildID)
+	if err == nil {
+		defer mrRows.Close()
+		for mrRows.Next() {
+			var uID, rID snowflake.ID
+			if err := mrRows.Scan(&uID, &rID); err == nil {
+				memberRolesMap[uID] = append(memberRolesMap[uID], rID)
+			}
+		}
+	}
+
 	membersQuery := `
 		SELECT m.guild_id, m.user_id, m.nick, m.joined_at, m.deaf, m.mute, m.flags,
 		       u.id, u.username, u.global_name, u.avatar
@@ -367,6 +381,11 @@ func (s *guildService) GetGuildDetails(ctx context.Context, callerID snowflake.I
 				&m.User.GlobalName,
 				&m.User.Avatar,
 			); err == nil {
+				if rList, ok := memberRolesMap[m.UserID]; ok {
+					m.Roles = rList
+				} else {
+					m.Roles = make([]snowflake.ID, 0)
+				}
 				members = append(members, m)
 			}
 		}

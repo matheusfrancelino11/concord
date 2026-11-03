@@ -24,6 +24,7 @@ type RouterDeps struct {
 	MessageHandler *MessageHandler
 	InviteHandler  *InviteHandler
 	VoiceHandler   *VoiceHandler
+	AdminHandler   *AdminHandler
 	GatewayHandler http.Handler
 	AuthMiddleware *middleware.AuthMiddleware
 }
@@ -115,6 +116,33 @@ func NewRouter(deps *RouterDeps) http.Handler {
 			if deps.VoiceHandler != nil {
 				pr.Post("/channels/{id}/voice/token", deps.VoiceHandler.GenerateToken)
 				pr.Post("/channels/{id}/voice-token", deps.VoiceHandler.GenerateToken)
+			}
+
+			// Milestone 6 Administration & Permissions
+			if deps.AdminHandler != nil {
+				// Server update
+				pr.Patch("/guilds/{id}", deps.AdminHandler.UpdateGuild)
+
+				// Roles
+				pr.Get("/guilds/{id}/roles", deps.AdminHandler.ListRoles)
+				pr.Post("/guilds/{id}/roles", deps.AdminHandler.CreateRole)
+				pr.Patch("/guilds/{id}/roles/{roleId}", deps.AdminHandler.UpdateRole)
+				pr.Delete("/guilds/{id}/roles/{roleId}", deps.AdminHandler.DeleteRole)
+
+				// Member Roles & Moderation
+				pr.Put("/guilds/{id}/members/{uid}/roles/{roleId}", deps.AdminHandler.AddMemberRole)
+				pr.Delete("/guilds/{id}/members/{uid}/roles/{roleId}", deps.AdminHandler.RemoveMemberRole)
+				pr.Patch("/guilds/{id}/members/{uid}", deps.AdminHandler.UpdateMember)
+				pr.Delete("/guilds/{id}/members/{uid}", deps.AdminHandler.KickMember)
+
+				// Bans
+				pr.Get("/guilds/{id}/bans", deps.AdminHandler.ListBans)
+				pr.Put("/guilds/{id}/bans/{uid}", deps.AdminHandler.BanMember)
+				pr.Delete("/guilds/{id}/bans/{uid}", deps.AdminHandler.UnbanMember)
+
+				// Channel Overwrites
+				pr.Put("/channels/{id}/permissions/{targetId}", deps.AdminHandler.SetChannelOverwrite)
+				pr.Delete("/channels/{id}/permissions/{targetId}", deps.AdminHandler.DeleteChannelOverwrite)
 			}
 		})
 	}
