@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5865F2"/>
+      <stop offset="100%" stop-color="#3b44b8"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Squircle Base -->
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#bg)"/>
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#glow)"/>
+  
+  <!-- Stylized Concord 'C' / Chat Audio Waveform -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Outer Arc of C -->
+    <path d="M 340 160 A 130 130 0 1 0 340 352" stroke-width="44"/>
+    
+    <!-- Audio Wave Bars inside the C -->
+    <line x1="220" y1="210" x2="220" y2="302" stroke-width="32"/>
+    <line x1="272" y1="180" x2="272" y2="332" stroke-width="32"/>
+    <line x1="324" y1="230" x2="324" y2="282" stroke-width="32"/>
+  </g>
+</svg>
