@@ -452,6 +452,7 @@ export interface TypingStartPayload {
   guild_id?: Snowflake;
   user_id: Snowflake;
   username?: string;
+  global_name?: string;
   timestamp?: number;
 }
 

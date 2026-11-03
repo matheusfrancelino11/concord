@@ -4,6 +4,7 @@ import { VoiceState } from "../types";
 import { api } from "../api/client";
 import { getGatewayClient } from "../gateway/GatewayClient";
 import { useSettingsStore } from "./settingsStore";
+import { sound } from "../utils/sound";
 
 export const EMPTY_VOICE_STATES: VoiceState[] = [];
 export const EMPTY_SPEAKING_USERS: string[] = [];
@@ -83,6 +84,20 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
   },
 
   handleVoiceStateUpdate: (vs) => {
+    const { activeVoiceChannelId } = get();
+    if (activeVoiceChannelId) {
+      const prevInChannel = (get().voiceStatesByGuild[vs.guild_id] || []).some(
+        (s) => s.user_id === vs.user_id && s.channel_id === activeVoiceChannelId
+      );
+      const nowInChannel = vs.channel_id === activeVoiceChannelId;
+
+      if (!prevInChannel && nowInChannel) {
+        sound.play("join");
+      } else if (prevInChannel && !nowInChannel) {
+        sound.play("leave");
+      }
+    }
+
     set((state) => {
       const guildId = vs.guild_id;
       const currentList = state.voiceStatesByGuild[guildId] || EMPTY_VOICE_STATES;
@@ -323,6 +338,7 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
         currentRoom: room,
         connectionStatus: "connected",
       });
+      sound.play("join");
     } catch (err: unknown) {
       console.error("[voiceStore] Voice connection failed:", err);
       const message =
@@ -343,6 +359,7 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
   },
 
   leaveVoiceChannel: () => {
+    sound.play("disconnect");
     const { currentRoom, activeVoiceGuildId, isScreenSharing } = get();
 
     if (currentRoom) {
@@ -412,6 +429,12 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
       }
     }
 
+    if (nextMuted) {
+      sound.play("mute");
+    } else {
+      sound.play("unmute");
+    }
+
     set({ isMuted: nextMuted });
   },
 
@@ -420,6 +443,12 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
     const nextDeaf = !isDeafened;
     // When deafened, auto-mute microphone as well
     const nextMute = nextDeaf ? true : isMuted;
+
+    if (nextDeaf) {
+      sound.play("deafen");
+    } else {
+      sound.play("undeafen");
+    }
 
     // Mute/unmute all subscribed remote audio elements
     document.querySelectorAll("audio[data-livekit-track='true']").forEach((el) => {

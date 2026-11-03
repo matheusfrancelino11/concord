@@ -408,26 +408,28 @@ func (s *channelService) ListUserDMChannels(ctx context.Context, callerID snowfl
 		}
 	}
 
-	if result == nil {
-		result = make([]models.ChannelResponse, 0)
+	// Filter out any DM channels that don't have valid recipients (prevents ghost users)
+	validResult := make([]models.ChannelResponse, 0, len(result))
+	for _, c := range result {
+		if len(c.Recipients) > 0 {
+			validResult = append(validResult, c)
+		}
 	}
-	return result, nil
+
+	return validResult, nil
 }
 
 func (s *channelService) CloseDMChannel(ctx context.Context, callerID, channelID snowflake.ID) error {
-	query := `DELETE FROM channel_recipients WHERE channel_id = $1 AND user_id = $2;`
-	res, err := s.db.Exec(ctx, query, channelID, callerID)
-	if err != nil {
-		return fmt.Errorf("close dm: %w", err)
-	}
-	if res.RowsAffected() == 0 {
+	var isRecipient bool
+	err := s.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM channel_recipients WHERE channel_id = $1 AND user_id = $2);`, channelID, callerID).Scan(&isRecipient)
+	if err != nil || !isRecipient {
 		return ErrChannelNotFound
 	}
 
-	var remaining int
-	_ = s.db.QueryRow(ctx, `SELECT COUNT(*) FROM channel_recipients WHERE channel_id = $1`, channelID).Scan(&remaining)
-	if remaining == 0 {
-		_, _ = s.db.Exec(ctx, `DELETE FROM channels WHERE id = $1`, channelID)
+	// Remove DM channel completely to prevent leaving a 1-recipient orphan ghost
+	_, err = s.db.Exec(ctx, `DELETE FROM channels WHERE id = $1 AND type = $2;`, channelID, models.ChannelTypeDM)
+	if err != nil {
+		return fmt.Errorf("close dm: %w", err)
 	}
 	return nil
 }

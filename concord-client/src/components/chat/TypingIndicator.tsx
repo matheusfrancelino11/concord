@@ -22,13 +22,13 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ channelId }) =
 
   let text = "";
   if (otherTyping.length === 1) {
-    text = `${otherTyping[0].username} is typing...`;
+    text = `${otherTyping[0].username} está digitando...`;
   } else if (otherTyping.length === 2) {
-    text = `${otherTyping[0].username} and ${otherTyping[1].username} are typing...`;
+    text = `${otherTyping[0].username} e ${otherTyping[1].username} estão digitando...`;
   } else if (otherTyping.length === 3) {
-    text = `${otherTyping[0].username}, ${otherTyping[1].username}, and ${otherTyping[2].username} are typing...`;
+    text = `${otherTyping[0].username}, ${otherTyping[1].username} e ${otherTyping[2].username} estão digitando...`;
   } else {
-    text = "Several people are typing...";
+    text = "Várias pessoas estão digitando...";
   }
 
   return (

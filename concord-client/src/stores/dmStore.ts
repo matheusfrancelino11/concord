@@ -61,22 +61,17 @@ export const useDMStore = create<DMState>((set, get) => ({
   },
 
   closeDM: async (channelId: string) => {
-    try {
-      await api.channels.delete(channelId);
-      set((state) => {
-        const nextList = state.dmChannels.filter((c) => c.id !== channelId);
-        const nextSelected =
-          state.selectedDMChannelId === channelId
-            ? nextList[0]?.id || null
-            : state.selectedDMChannelId;
-        return {
-          dmChannels: nextList,
-          selectedDMChannelId: nextSelected,
-        };
-      });
-    } catch (err) {
-      console.warn("Failed to close DM channel:", err);
-    }
+    set((state) => {
+      const nextList = state.dmChannels.filter((c) => c.id !== channelId);
+      const nextSelected =
+        state.selectedDMChannelId === channelId
+          ? null
+          : state.selectedDMChannelId;
+      return {
+        dmChannels: nextList,
+        selectedDMChannelId: nextSelected,
+      };
+    });
   },
 
   selectDMChannel: (channelId: string | null) => {

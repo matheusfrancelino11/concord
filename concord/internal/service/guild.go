@@ -209,11 +209,21 @@ func (s *guildService) CreateGuild(ctx context.Context, callerID snowflake.ID, r
 }
 
 func (s *guildService) ListUserGuilds(ctx context.Context, userID snowflake.ID) ([]models.GuildSummaryResponse, error) {
+	// Ensure owner is always recorded in members table (auto-repair guarantee)
+	healQuery := `
+		INSERT INTO members (guild_id, user_id, joined_at)
+		SELECT id, owner_id, NOW()
+		FROM guilds
+		WHERE owner_id = $1
+		ON CONFLICT (guild_id, user_id) DO NOTHING;
+	`
+	_, _ = s.db.Exec(ctx, healQuery, userID)
+
 	query := `
-		SELECT g.id, g.name, g.icon, g.owner_id, g.created_at
+		SELECT DISTINCT g.id, g.name, g.icon, g.owner_id, g.created_at
 		FROM guilds g
-		JOIN members m ON g.id = m.guild_id
-		WHERE m.user_id = $1
+		LEFT JOIN members m ON g.id = m.guild_id AND m.user_id = $1
+		WHERE m.user_id = $1 OR g.owner_id = $1
 		ORDER BY g.created_at ASC
 	`
 	rows, err := s.db.Query(ctx, query, userID)

@@ -435,12 +435,31 @@ func (s *messageService) TriggerTyping(ctx context.Context, callerID, channelID 
 		return 0, err
 	}
 
+	var username string
+	var globalName *string
+	if guildID > 0 {
+		var nick *string
+		_ = s.db.QueryRow(ctx, `
+			SELECT u.username, u.global_name, m.nick
+			FROM users u
+			LEFT JOIN members m ON m.guild_id = $1 AND m.user_id = u.id
+			WHERE u.id = $2
+		`, guildID, callerID).Scan(&username, &globalName, &nick)
+		if nick != nil && *nick != "" {
+			globalName = nick
+		}
+	} else {
+		_ = s.db.QueryRow(ctx, `SELECT username, global_name FROM users WHERE id = $1`, callerID).Scan(&username, &globalName)
+	}
+
 	// Ephemeral: NO DB WRITE
 	typingPayload := models.TypingStartPayload{
-		ChannelID: channelID,
-		GuildID:   guildID,
-		UserID:    callerID,
-		Timestamp: time.Now().UnixMilli(),
+		ChannelID:  channelID,
+		GuildID:    guildID,
+		UserID:     callerID,
+		Username:   username,
+		GlobalName: globalName,
+		Timestamp:  time.Now().UnixMilli(),
 	}
 	s.broadcastEvent(ctx, guildID, channelID, EventTypingStart, typingPayload)
 

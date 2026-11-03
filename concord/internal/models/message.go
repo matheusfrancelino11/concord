@@ -59,8 +59,10 @@ type MessageDeletePayload struct {
 
 // TypingStartPayload is the payload dispatched in TYPING_START event
 type TypingStartPayload struct {
-	ChannelID snowflake.ID `json:"channel_id"`
-	GuildID   snowflake.ID `json:"guild_id"`
-	UserID    snowflake.ID `json:"user_id"`
-	Timestamp int64        `json:"timestamp"`
+	ChannelID  snowflake.ID `json:"channel_id"`
+	GuildID    snowflake.ID `json:"guild_id,omitempty"`
+	UserID     snowflake.ID `json:"user_id"`
+	Username   string       `json:"username,omitempty"`
+	GlobalName *string      `json:"global_name,omitempty"`
+	Timestamp  int64        `json:"timestamp"`
 }

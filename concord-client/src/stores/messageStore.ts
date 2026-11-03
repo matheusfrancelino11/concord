@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { Message } from "../types";
 import { api, ApiError } from "../api/client";
+import { useGuildStore } from "./guildStore";
+import { useRelationshipStore } from "./relationshipStore";
+import { useDMStore } from "./dmStore";
 
 export interface TypingUser {
   userId: string;
@@ -304,22 +307,59 @@ export const useMessageStore = create<MessageState>((set, get) => ({
     user_id?: string;
     userId?: string;
     username?: string;
+    global_name?: string;
   }) => {
     const channelId = payload.channel_id || payload.channelId;
     const userId = payload.user_id || payload.userId;
     if (!channelId || !userId) return;
 
-    // Resolve username if not explicitly supplied
-    let username = payload.username;
+    // Resolve user's actual display name
+    let username = payload.global_name || payload.username;
+
     if (!username) {
+      // 1. Try finding in server members (for guild nick or global name)
+      const allMembers = useGuildStore.getState().membersByGuild;
+      for (const members of Object.values(allMembers)) {
+        const found = members.find((m) => m.user_id === userId);
+        if (found) {
+          username = found.nick || found.user?.global_name || found.user?.username;
+          if (username) break;
+        }
+      }
+    }
+
+    if (!username) {
+      // 2. Try finding in friend relationships
+      const rels = useRelationshipStore.getState().relationships;
+      const foundRel = rels.find((r) => r.user?.id === userId || r.id === userId);
+      if (foundRel && foundRel.user) {
+        username = foundRel.user.global_name || foundRel.user.username;
+      }
+    }
+
+    if (!username) {
+      // 3. Try finding in DM channels
+      const dms = useDMStore.getState().dmChannels;
+      for (const dm of dms) {
+        const recip = (dm.recipients || []).find((u) => u.id === userId);
+        if (recip) {
+          username = recip.global_name || recip.username;
+          if (username) break;
+        }
+      }
+    }
+
+    if (!username) {
+      // 4. Try finding in cached messages
       const cachedMsgs = get().messagesByChannel[channelId] || [];
       const userMsg = cachedMsgs.find((m) => m.author && m.author.id === userId);
       if (userMsg && userMsg.author) {
         username = userMsg.author.global_name || userMsg.author.username;
       }
     }
+
     if (!username) {
-      username = `User ${userId.slice(-4)}`;
+      username = payload.username || "Alguém";
     }
 
     const expiresAt = Date.now() + 5000;

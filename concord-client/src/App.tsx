@@ -9,6 +9,7 @@ import { useSettingsStore } from "./stores/settingsStore";
 import { useDMStore } from "./stores/dmStore";
 import { useRelationshipStore } from "./stores/relationshipStore";
 import { gateway } from "./gateway/GatewayClient";
+import { sound } from "./utils/sound";
 import {
   GatewayEvent,
   Message,
@@ -72,11 +73,16 @@ export const App: React.FC = () => {
       (msg) => {
         handleMessageCreate(msg, currentChannelIdRef.current);
 
-        // Desktop native notification
+        // Sound effect on new incoming message
+        const currentUserId = useAuthStore.getState().user?.id;
         const settings = useSettingsStore.getState();
         const isCurrent = msg.channel_id === currentChannelIdRef.current;
         const isChannelMuted = Boolean(settings.mutedChannels[msg.channel_id]);
         const isGuildMuted = Boolean(msg.guild_id && settings.mutedGuilds[msg.guild_id]);
+
+        if (msg.author?.id !== currentUserId && !isChannelMuted && !isGuildMuted) {
+          sound.play("message");
+        }
 
         if (
           settings.notificationsEnabled &&
@@ -384,6 +390,7 @@ export const App: React.FC = () => {
           !pttActive
         ) {
           pttActive = true;
+          sound.play("ptt_on");
           voice.currentRoom.localParticipant
             .setMicrophoneEnabled(true, {
               deviceId: settings.inputDeviceId !== "default" ? settings.inputDeviceId : undefined,
@@ -407,6 +414,7 @@ export const App: React.FC = () => {
         pttActive
       ) {
         pttActive = false;
+        sound.play("ptt_off");
         voice.currentRoom.localParticipant.setMicrophoneEnabled(false).catch(console.warn);
       }
     };
