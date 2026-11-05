@@ -187,10 +187,13 @@ func (s *voiceService) GetGuildVoiceStates(ctx context.Context, guildID snowflak
 func (s *voiceService) ClearVoiceStatesForSession(ctx context.Context, userID snowflake.ID, sessionID string) ([]models.VoiceState, error) {
 	const deleteSQL = `
 		DELETE FROM voice_states
-		WHERE user_id = $1 AND session_id = $2
+		WHERE user_id = $1
 		RETURNING guild_id, channel_id, user_id, session_id
 	`
-	rows, err := s.db.Query(ctx, deleteSQL, userID, sessionID)
+	// Delete by user_id only: the session_id stored in voice_states does not
+	// reliably match the gateway session id, which left ghost participants.
+	_ = sessionID
+	rows, err := s.db.Query(ctx, deleteSQL, userID)
 	if err != nil {
 		return nil, fmt.Errorf("delete voice states for session: %w", err)
 	}

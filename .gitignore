@@ -11,6 +11,14 @@ concord-client/src-tauri/*.key
 scripts/*.key
 scripts/.publish-config.ps1
 
+# Internal local documentation (keep only README.md and README.en.md in repo)
+docs/*.md
+docs/*.MD
+HANDOFF.md
+PROJECT.md
+TEST_INFRA.md
+TEST_READY.md
+
 # Operating System Files
 .DS_Store
 Thumbs.db

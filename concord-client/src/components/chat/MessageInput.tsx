@@ -135,34 +135,49 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleSend = async () => {
     const trimmed = content.trim();
-    if ((!trimmed && !pendingImage) || isSending || disabled) return;
+    if ((!trimmed && !pendingImage) || disabled) return;
+
+    // Capture payload and clear input immediately so user can keep typing without losing focus
+    const textToSend = trimmed;
+    const imageToSend = pendingImage;
+    const replyIdToSend = replyingTo?.id;
+
+    setContent("");
+    setPendingImage(null);
+    if (imageToSend?.previewUrl) {
+      URL.revokeObjectURL(imageToSend.previewUrl);
+    }
+    if (onCancelReply) {
+      onCancelReply();
+    }
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "44px";
+      textareaRef.current.focus();
+    }
 
     try {
       setIsSending(true);
-      let messageContent = trimmed;
+      let messageContent = textToSend;
 
-      if (pendingImage) {
+      if (imageToSend) {
         // Upload image to backend
-        const uploaded = await api.uploads.upload(pendingImage.file);
-        messageContent = trimmed ? `${trimmed} ${uploaded.url}` : uploaded.url;
-        handleRemovePendingImage();
+        const uploaded = await api.uploads.upload(imageToSend.file);
+        messageContent = textToSend ? `${textToSend} ${uploaded.url}` : uploaded.url;
       }
 
-      await onSendMessage(messageContent, replyingTo?.id);
-      setContent("");
-      if (onCancelReply) {
-        onCancelReply();
-      }
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "44px";
-        textareaRef.current.focus();
-      }
+      await onSendMessage(messageContent, replyIdToSend);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao enviar mensagem";
-      alert(msg);
       console.error("[MessageInput] Send error:", err);
+      // Restore text if send failed
+      setContent((prev) => (prev ? `${textToSend} ${prev}` : textToSend));
+      alert(msg);
     } finally {
       setIsSending(false);
+      // Re-ensure focus is retained
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
     }
   };
 
@@ -170,6 +185,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+      textareaRef.current?.focus();
     } else if (e.key === "Escape" && replyingTo && onCancelReply) {
       e.preventDefault();
       onCancelReply();
@@ -284,7 +300,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           aria-label="Enviar imagem do computador"
           title="Enviar imagem do computador (ou cole com Ctrl+V)"
           className="text-[#b5bac1] hover:text-[#f2f3f5] p-1 -ml-1 rounded-full hover:bg-[#404249] transition cursor-pointer shrink-0 mb-0.5"
-          disabled={disabled || isSending}
+          disabled={disabled}
         >
           <PlusCircle className="w-5 h-5" />
         </button>
@@ -297,7 +313,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           placeholder={`Conversar em #${channelName || "canal"}`}
-          disabled={disabled || isSending}
+          disabled={disabled}
           rows={1}
           className="flex-1 bg-transparent text-[#dbdee1] placeholder-[#80848e] text-sm focus:outline-none resize-none max-h-[144px] overflow-y-auto leading-relaxed py-1"
         />

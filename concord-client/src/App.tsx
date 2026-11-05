@@ -24,6 +24,9 @@ import { LoginView } from "./components/auth/LoginView";
 import { RegisterView } from "./components/auth/RegisterView";
 import { AppLayout } from "./components/layout/AppLayout";
 import { ConcordLoadingScreen } from "./components/common/ConcordLoadingScreen";
+import { UserProfileModal } from "./components/modals/UserProfileModal";
+import { useProfileModalStore } from "./stores/profileModalStore";
+import { UpdateBanner } from "./components/layout/UpdateBanner";
 import { Loader2 } from "lucide-react";
 
 export const App: React.FC = () => {
@@ -362,9 +365,14 @@ export const App: React.FC = () => {
     let pttActive = false;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing inside input or textarea
-      const targetTag = (e.target as HTMLElement)?.tagName;
-      const isInputActive = targetTag === "INPUT" || targetTag === "TEXTAREA";
+      // Ignore all shortcuts if typing inside input, textarea or editable field
+      const target = e.target as HTMLElement | null;
+      const isInputActive =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable;
+
+      if (isInputActive) return;
 
       // Shortcuts Ctrl+Shift+M (Mute) & Ctrl+Shift+D (Deafen)
       if (e.ctrlKey && e.shiftKey && (e.key === "M" || e.key === "m")) {
@@ -379,27 +387,25 @@ export const App: React.FC = () => {
       }
 
       // Push-to-Talk logic
-      if (!isInputActive) {
-        const settings = useSettingsStore.getState();
-        const voice = useVoiceStore.getState();
-        if (
-          settings.inputMode === "push_to_talk" &&
-          voice.activeVoiceChannelId &&
-          voice.currentRoom &&
-          e.code === settings.pushToTalkKey &&
-          !pttActive
-        ) {
-          pttActive = true;
-          sound.play("ptt_on");
-          voice.currentRoom.localParticipant
-            .setMicrophoneEnabled(true, {
-              deviceId: settings.inputDeviceId !== "default" ? settings.inputDeviceId : undefined,
-              echoCancellation: settings.echoCancellation,
-              noiseSuppression: settings.noiseSuppression,
-              autoGainControl: settings.autoGainControl,
-            })
-            .catch(console.warn);
-        }
+      const settings = useSettingsStore.getState();
+      const voice = useVoiceStore.getState();
+      if (
+        settings.inputMode === "push_to_talk" &&
+        voice.activeVoiceChannelId &&
+        voice.currentRoom &&
+        e.code === settings.pushToTalkKey &&
+        !pttActive
+      ) {
+        pttActive = true;
+        sound.play("ptt_on");
+        voice.currentRoom.localParticipant
+          .setMicrophoneEnabled(true, {
+            deviceId: settings.inputDeviceId !== "default" ? settings.inputDeviceId : undefined,
+            echoCancellation: settings.echoCancellation,
+            noiseSuppression: settings.noiseSuppression,
+            autoGainControl: settings.autoGainControl,
+          })
+          .catch(console.warn);
       }
     };
 
@@ -427,6 +433,31 @@ export const App: React.FC = () => {
     };
   }, [isAuthenticated]);
 
+  // Disable default WebView2 browser context menu globally
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return; // Allow native copy/cut/paste in text inputs
+      }
+      e.preventDefault();
+    };
+    window.addEventListener("contextmenu", handleContextMenu);
+    return () => window.removeEventListener("contextmenu", handleContextMenu);
+  }, []);
+
+  const {
+    isOpen: isProfileOpen,
+    user: profileUser,
+    options: profileOptions,
+    closeProfile,
+  } = useProfileModalStore();
+
   // Loading state on startup with animated Concord mascot
   if (authLoading) {
     return <ConcordLoadingScreen message="Conectando ao Concord..." />;
@@ -441,8 +472,24 @@ export const App: React.FC = () => {
     );
   }
 
-  // Authenticated: render 3-sidebar layout
-  return <AppLayout />;
+  // Authenticated: render 3-sidebar layout and global user profile modal
+  return (
+    <>
+      <UpdateBanner />
+      <AppLayout />
+      {profileUser && (
+        <UserProfileModal
+          open={isProfileOpen}
+          onOpenChange={(open) => !open && closeProfile()}
+          user={profileUser}
+          nick={profileOptions.nick}
+          joinedAt={profileOptions.joinedAt}
+          roles={profileOptions.roles}
+          inVoice={profileOptions.inVoice}
+        />
+      )}
+    </>
+  );
 };
 
 export default App;

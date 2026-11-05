@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
+  <defs>
+    <!-- Dark fabric gradient -->
+    <linearGradient id="flag-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#121316" />
+      <stop offset="50%" stop-color="#0b0c0e" />
+      <stop offset="100%" stop-color="#15171b" />
+    </linearGradient>
+
+    <!-- Hat straw gradient -->
+    <linearGradient id="straw-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFDD53" />
+      <stop offset="60%" stop-color="#F4B41A" />
+      <stop offset="100%" stop-color="#D99B00" />
+    </linearGradient>
+
+    <!-- Hat ribbon gradient -->
+    <linearGradient id="ribbon-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#BA1B1D" />
+      <stop offset="50%" stop-color="#E63946" />
+      <stop offset="100%" stop-color="#9E1416" />
+    </linearGradient>
+
+    <!-- Drop shadow for depth -->
+    <filter id="rebel-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.65" />
+    </filter>
+
+    <!-- Subtle texture pattern -->
+    <radialGradient id="vignette" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.03" />
+      <stop offset="70%" stop-color="#000000" stop-opacity="0" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.6" />
+    </radialGradient>
+  </defs>
+
+  <!-- Flag Cloth Background -->
+  <rect width="800" height="500" rx="16" fill="url(#flag-bg)" />
+  <rect width="800" height="500" rx="16" fill="url(#vignette)" />
+
+  <!-- Jolly Roger Symbol Group with Shadow -->
+  <g id="jolly-roger" filter="url(#rebel-shadow)" transform="translate(400, 260)">
+    <!-- Crossed Bones Behind Skull -->
+    <!-- Bone 1: Top-Left to Bottom-Right -->
+    <g transform="rotate(35)">
+      <rect x="-175" y="-14" width="350" height="28" rx="8" fill="#F8F9FA" />
+      <!-- Left knobs -->
+      <circle cx="-175" cy="-16" r="19" fill="#F8F9FA" />
+      <circle cx="-175" cy="16" r="19" fill="#F8F9FA" />
+      <!-- Right knobs -->
+      <circle cx="175" cy="-16" r="19" fill="#F8F9FA" />
+      <circle cx="175" cy="16" r="19" fill="#F8F9FA" />
+    </g>
+
+    <!-- Bone 2: Top-Right to Bottom-Left -->
+    <g transform="rotate(-35)">
+      <rect x="-175" y="-14" width="350" height="28" rx="8" fill="#F8F9FA" />
+      <!-- Left knobs -->
+      <circle cx="-175" cy="-16" r="19" fill="#F8F9FA" />
+      <circle cx="-175" cy="16" r="19" fill="#F8F9FA" />
+      <!-- Right knobs -->
+      <circle cx="175" cy="-16" r="19" fill="#F8F9FA" />
+      <circle cx="175" cy="16" r="19" fill="#F8F9FA" />
+    </g>
+
+    <!-- Skull Base Head -->
+    <!-- Cranium -->
+    <circle cx="0" cy="-20" r="88" fill="#F8F9FA" />
+
+    <!-- Jaw & Teeth Extension -->
+    <path d="M -46 25 
+             C -46 72, -32 94, 0 94 
+             C 32 94, 46 72, 46 25 
+             Z" fill="#F8F9FA" />
+
+    <!-- Eye Sockets (Dark Pirate Black) -->
+    <circle cx="-32" cy="-8" r="22" fill="#121316" />
+    <circle cx="32" cy="-8" r="22" fill="#121316" />
+
+    <!-- Nose Cavity -->
+    <path d="M 0 16 L -7 30 L 7 30 Z" fill="#121316" />
+
+    <!-- Big Wide Teeth Smile Grid -->
+    <g stroke="#121316" stroke-width="4.5" stroke-linecap="round">
+      <!-- Horizontal tooth separation line -->
+      <line x1="-36" y1="62" x2="36" y2="62" />
+      <!-- Vertical tooth separation lines -->
+      <line x1="-24" y1="42" x2="-24" y2="84" />
+      <line x1="-12" y1="40" x2="-12" y2="88" />
+      <line x1="0" y1="40" x2="0" y2="90" />
+      <line x1="12" y1="40" x2="12" y2="88" />
+      <line x1="24" y1="42" x2="24" y2="84" />
+    </g>
+
+    <!-- Straw Hat (The Symbol of Freedom & The Will of D) -->
+    <!-- Brim Back Arc (gives 3D depth) -->
+    <path d="M -152 -62 C -110 -84, 110 -84, 152 -62" fill="none" stroke="#B87D00" stroke-width="6" />
+
+    <!-- Hat Crown Base -->
+    <path d="M -78 -64 
+             C -78 -160, 78 -160, 78 -64 
+             Z" fill="url(#straw-grad)" />
+
+    <!-- Red Ribbon Band -->
+    <path d="M -78 -64 
+             C -40 -76, 40 -76, 78 -64 
+             L 76 -84 
+             C 40 -96, -40 -96, -76 -84 
+             Z" fill="url(#ribbon-grad)" />
+
+    <!-- Hat Brim Curved Front -->
+    <ellipse cx="0" cy="-60" rx="146" ry="24" fill="url(#straw-grad)" />
+    <!-- Brim Rim Shadow Line -->
+    <path d="M -146 -60 C -90 -38, 90 -38, 146 -60" fill="none" stroke="#B87D00" stroke-width="4" opacity="0.6" />
+  </g>
+</svg>

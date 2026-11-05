@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { Room, RoomEvent, Track, LocalTrackPublication } from "livekit-client";
+import { invoke } from "@tauri-apps/api/core";
 import { VoiceState } from "../types";
 import { api } from "../api/client";
 import { getGatewayClient } from "../gateway/GatewayClient";
@@ -9,6 +10,129 @@ import { sound } from "../utils/sound";
 export const EMPTY_VOICE_STATES: VoiceState[] = [];
 export const EMPTY_SPEAKING_USERS: string[] = [];
 export const EMPTY_SCREEN_SHARES: ActiveScreenShare[] = [];
+
+// Real-time Local VAD (Voice Activity Detection) state
+let localVadContext: AudioContext | null = null;
+let localVadInterval: ReturnType<typeof setInterval> | null = null;
+let localSpeakingHoldTimeout: ReturnType<typeof setTimeout> | null = null;
+let isLocalSpeaking = false;
+let remoteSpeakingIds: string[] = [];
+
+function isPermissionError(err: unknown): boolean {
+  if (!err) return false;
+  if (typeof err === "object") {
+    const e = err as { name?: string; message?: string };
+    if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") return true;
+    if (
+      e.message &&
+      (e.message.includes("Permission denied") ||
+        e.message.includes("NotAllowedError") ||
+        e.message.includes("permission"))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function syncSpeakingState(localUserId: string | null) {
+  const currentStore = useVoiceStore.getState();
+  const ids = [...remoteSpeakingIds];
+
+  const shouldIncludeLocal =
+    isLocalSpeaking &&
+    Boolean(localUserId) &&
+    !currentStore.isMuted &&
+    !currentStore.isDeafened;
+
+  if (shouldIncludeLocal && localUserId) {
+    if (!ids.includes(localUserId)) {
+      ids.push(localUserId);
+    }
+  } else if (localUserId) {
+    const idx = ids.indexOf(localUserId);
+    if (idx !== -1) {
+      ids.splice(idx, 1);
+    }
+  }
+
+  useVoiceStore.setState({
+    speakingUserIds: ids.length > 0 ? ids : EMPTY_SPEAKING_USERS,
+  });
+}
+
+function setupLocalVad(track: MediaStreamTrack, localUserId: string) {
+  stopLocalVad();
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const source = ctx.createMediaStreamSource(new MediaStream([track]));
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.2;
+    source.connect(analyser);
+
+    localVadContext = ctx;
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    localVadInterval = setInterval(() => {
+      const state = useVoiceStore.getState();
+      if (state.isMuted || state.isDeafened) {
+        if (isLocalSpeaking) {
+          isLocalSpeaking = false;
+          syncSpeakingState(localUserId);
+        }
+        return;
+      }
+
+      analyser.getByteTimeDomainData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        const val = (dataArray[i] - 128) / 128;
+        sum += val * val;
+      }
+      const rms = Math.sqrt(sum / dataArray.length);
+
+      // Sensitivity threshold ~ -40dB (clean vocal detection)
+      if (rms > 0.015) {
+        if (localSpeakingHoldTimeout) {
+          clearTimeout(localSpeakingHoldTimeout);
+          localSpeakingHoldTimeout = null;
+        }
+        if (!isLocalSpeaking) {
+          isLocalSpeaking = true;
+          syncSpeakingState(localUserId);
+        }
+      } else if (isLocalSpeaking && !localSpeakingHoldTimeout) {
+        // Natural speech hold decay (350ms): hold green ring steady while talking continuously
+        localSpeakingHoldTimeout = setTimeout(() => {
+          isLocalSpeaking = false;
+          localSpeakingHoldTimeout = null;
+          syncSpeakingState(localUserId);
+        }, 350);
+      }
+    }, 40); // 25 checks per second = ultra-low latency response
+  } catch (err) {
+    console.warn("[voiceStore] Could not start local VAD:", err);
+  }
+}
+
+function stopLocalVad() {
+  if (localVadInterval) {
+    clearInterval(localVadInterval);
+    localVadInterval = null;
+  }
+  if (localSpeakingHoldTimeout) {
+    clearTimeout(localSpeakingHoldTimeout);
+    localSpeakingHoldTimeout = null;
+  }
+  isLocalSpeaking = false;
+  if (localVadContext) {
+    localVadContext.close().catch(() => {});
+    localVadContext = null;
+  }
+}
 
 export type VoiceConnectionStatus =
   | "disconnected"
@@ -36,6 +160,7 @@ interface VoiceStoreState {
   speakingUserIds: string[];
   currentRoom: Room | null;
   error: string | null;
+  micPermissionBlocked: boolean;
 
   // Milestone 5: Screen Sharing State
   isScreenSharing: boolean;
@@ -56,6 +181,10 @@ interface VoiceStoreState {
   switchOutputDevice: (deviceId: string) => Promise<void>;
   syncUserAudio: (userId: string) => void;
   syncAllAudio: () => void;
+  setMicPermissionBlocked: (blocked: boolean) => void;
+  repairMicPermissions: () => Promise<boolean>;
+  openWindowsMicSettings: () => Promise<void>;
+  restartApp: () => Promise<void>;
 }
 
 export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
@@ -69,6 +198,44 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
   speakingUserIds: EMPTY_SPEAKING_USERS,
   currentRoom: null,
   error: null,
+  micPermissionBlocked: false,
+
+  setMicPermissionBlocked: (blocked) => set({ micPermissionBlocked: blocked }),
+
+  repairMicPermissions: async () => {
+    try {
+      if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+        await invoke("reset_mic_permissions");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      set({ micPermissionBlocked: false });
+      return true;
+    } catch (err) {
+      console.warn("[voiceStore] Mic still blocked after repair attempt:", err);
+      return false;
+    }
+  },
+
+  openWindowsMicSettings: async () => {
+    try {
+      if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+        await invoke("open_windows_mic_settings");
+      }
+    } catch (err) {
+      console.warn("[voiceStore] Failed to open Windows settings:", err);
+    }
+  },
+
+  restartApp: async () => {
+    try {
+      if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+        await invoke("restart_app");
+      }
+    } catch (err) {
+      console.warn("[voiceStore] Failed to restart app:", err);
+    }
+  },
 
   isScreenSharing: false,
   activeScreenShares: EMPTY_SCREEN_SHARES,
@@ -164,14 +331,21 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
 
       // 3. Register Active Speakers Event
       room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
-        const ids = speakers.map((s) => s.identity);
-        if (
-          room.localParticipant.isSpeaking &&
-          !ids.includes(room.localParticipant.identity)
-        ) {
-          ids.push(room.localParticipant.identity);
-        }
-        set({ speakingUserIds: ids.length > 0 ? ids : EMPTY_SPEAKING_USERS });
+        const localId = room.localParticipant.identity;
+        remoteSpeakingIds = speakers
+          .map((s) => s.identity)
+          .filter((id) => id !== localId);
+        syncSpeakingState(localId);
+      });
+
+      // 3b. Register Connection Lifecycle Events for Stability
+      room.on(RoomEvent.Reconnecting, () => {
+        set({ connectionStatus: "reconnecting" });
+      });
+
+      room.on(RoomEvent.Reconnected, () => {
+        set({ connectionStatus: "connected" });
+        get().syncAllAudio();
       });
 
       // 4. Register Track Subscribed Event (Audio & Screen Share Video)
@@ -303,22 +477,32 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
       // 8. Publish local microphone track if not muted
       if (!shouldMuteInitially) {
         try {
-          await room.localParticipant.setMicrophoneEnabled(true, {
+          const pub = (await room.localParticipant.setMicrophoneEnabled(true, {
             deviceId: settings.inputDeviceId !== "default" ? settings.inputDeviceId : undefined,
             echoCancellation: settings.echoCancellation,
             noiseSuppression: settings.noiseSuppression,
             autoGainControl: settings.autoGainControl,
-          });
+          })) as LocalTrackPublication | undefined;
+          if (pub?.track?.mediaStreamTrack) {
+            setupLocalVad(pub.track.mediaStreamTrack, room.localParticipant.identity);
+            set({ micPermissionBlocked: false });
+          }
         } catch (micErr) {
           console.warn("[voiceStore] Could not enable microphone:", micErr);
-          set({ isMuted: true });
+          if (isPermissionError(micErr)) {
+            set({ micPermissionBlocked: true });
+          }
         }
       } else if (settings.inputMode === "push_to_talk" && !isMuted) {
         // Prepare microphone track in disabled state for instant PTT response
         try {
           await room.localParticipant.setMicrophoneEnabled(false);
+          set({ micPermissionBlocked: false });
         } catch (micErr) {
           console.warn("[voiceStore] Could not prepare PTT mic:", micErr);
+          if (isPermissionError(micErr)) {
+            set({ micPermissionBlocked: true });
+          }
         }
       }
 
@@ -360,6 +544,7 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
 
   leaveVoiceChannel: () => {
     sound.play("disconnect");
+    stopLocalVad();
     const { currentRoom, activeVoiceGuildId, isScreenSharing } = get();
 
     if (currentRoom) {
@@ -406,14 +591,64 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
   },
 
   toggleMute: async () => {
-    const { isMuted, currentRoom, activeVoiceGuildId, activeVoiceChannelId, isDeafened, isScreenSharing } = get();
+    const { isMuted, currentRoom, activeVoiceGuildId, activeVoiceChannelId, isDeafened, isScreenSharing, voiceStatesByGuild } = get();
     const nextMuted = !isMuted;
+
+    if (nextMuted) {
+      sound.play("mute");
+    } else {
+      sound.play("unmute");
+    }
+
+    const localUserId = currentRoom?.localParticipant.identity;
+    set({ isMuted: nextMuted });
+    if (nextMuted) {
+      isLocalSpeaking = false;
+      syncSpeakingState(localUserId || null);
+    }
+
+    // Optimistically update voiceStatesByGuild for instant UI feedback
+    if (activeVoiceGuildId && localUserId) {
+      const currentList = voiceStatesByGuild[activeVoiceGuildId] || EMPTY_VOICE_STATES;
+      const nextList = currentList.map((item) =>
+        item.user_id === localUserId ? { ...item, self_mute: nextMuted } : item
+      );
+      set({
+        voiceStatesByGuild: {
+          ...voiceStatesByGuild,
+          [activeVoiceGuildId]: nextList,
+        },
+      });
+    }
 
     if (currentRoom) {
       try {
-        await currentRoom.localParticipant.setMicrophoneEnabled(!nextMuted);
+        const pub = currentRoom.localParticipant.getTrackPublication(Track.Source.Microphone);
+        if (pub?.track) {
+          pub.track.mediaStreamTrack.enabled = !nextMuted;
+          if (nextMuted) {
+            await pub.mute();
+          } else {
+            await pub.unmute();
+          }
+        } else if (!nextMuted) {
+          const settings = useSettingsStore.getState();
+          const pubNew = (await currentRoom.localParticipant.setMicrophoneEnabled(true, {
+            deviceId: settings.inputDeviceId !== "default" ? settings.inputDeviceId : undefined,
+            echoCancellation: settings.echoCancellation,
+            noiseSuppression: settings.noiseSuppression,
+            autoGainControl: settings.autoGainControl,
+          })) as LocalTrackPublication | undefined;
+          if (pubNew?.track?.mediaStreamTrack) {
+            setupLocalVad(pubNew.track.mediaStreamTrack, currentRoom.localParticipant.identity);
+            set({ micPermissionBlocked: false });
+          }
+        }
       } catch (err) {
-        console.warn("[voiceStore] Error toggling microphone:", err);
+        console.warn("[voiceStore] Error toggling microphone in LiveKit:", err);
+        if (isPermissionError(err)) {
+          set({ micPermissionBlocked: true });
+        }
       }
     }
 
@@ -428,18 +663,10 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
         console.error("[voiceStore] Error updating gateway voice mute state:", err);
       }
     }
-
-    if (nextMuted) {
-      sound.play("mute");
-    } else {
-      sound.play("unmute");
-    }
-
-    set({ isMuted: nextMuted });
   },
 
   toggleDeafen: async () => {
-    const { isDeafened, isMuted, currentRoom, activeVoiceGuildId, activeVoiceChannelId, isScreenSharing } = get();
+    const { isDeafened, isMuted, currentRoom, activeVoiceGuildId, activeVoiceChannelId, isScreenSharing, voiceStatesByGuild } = get();
     const nextDeaf = !isDeafened;
     // When deafened, auto-mute microphone as well
     const nextMute = nextDeaf ? true : isMuted;
@@ -455,9 +682,40 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
       (el as HTMLAudioElement).muted = nextDeaf;
     });
 
+    const localUserId = currentRoom?.localParticipant.identity;
+    set({ isDeafened: nextDeaf, isMuted: nextMute });
+    if (nextMute) {
+      isLocalSpeaking = false;
+      syncSpeakingState(localUserId || null);
+    }
+
+    // Optimistically update voiceStatesByGuild
+    if (activeVoiceGuildId && localUserId) {
+      const currentList = voiceStatesByGuild[activeVoiceGuildId] || EMPTY_VOICE_STATES;
+      const nextList = currentList.map((item) =>
+        item.user_id === localUserId
+          ? { ...item, self_deaf: nextDeaf, self_mute: nextMute }
+          : item
+      );
+      set({
+        voiceStatesByGuild: {
+          ...voiceStatesByGuild,
+          [activeVoiceGuildId]: nextList,
+        },
+      });
+    }
+
     if (currentRoom) {
       try {
-        await currentRoom.localParticipant.setMicrophoneEnabled(!nextMute);
+        const pub = currentRoom.localParticipant.getTrackPublication(Track.Source.Microphone);
+        if (pub?.track) {
+          pub.track.mediaStreamTrack.enabled = !nextMute;
+          if (nextMute) {
+            await pub.mute();
+          } else {
+            await pub.unmute();
+          }
+        }
       } catch (err) {
         console.warn("[voiceStore] Error toggling microphone for deafen:", err);
       }
@@ -474,8 +732,6 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
         console.error("[voiceStore] Error updating gateway voice deafen state:", err);
       }
     }
-
-    set({ isDeafened: nextDeaf, isMuted: nextMute });
   },
 
   toggleScreenShare: async () => {
@@ -524,11 +780,22 @@ export const useVoiceStore = create<VoiceStoreState>((set, get) => ({
         }
       }
     } else {
-      // 1. Start local screen sharing
+      // 1. Start local screen sharing with configured resolution & framerate
       try {
+        const settings = useSettingsStore.getState();
+        const res = settings.screenShareResolution;
+        const width = res === "1440p" ? 2560 : res === "1080p" ? 1920 : 1280;
+        const height = res === "1440p" ? 1440 : res === "1080p" ? 1080 : 720;
+        const fps = settings.screenShareFps;
+
         const pub = (await currentRoom.localParticipant.setScreenShareEnabled(true, {
           audio: true,
           selfBrowserSurface: "include",
+          resolution: {
+            width,
+            height,
+            frameRate: fps,
+          },
         })) as LocalTrackPublication | undefined;
 
         if (pub && pub.track) {

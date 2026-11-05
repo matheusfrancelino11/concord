@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { User, LoginPayload, RegisterPayload } from "../types";
+import { useVoiceStore } from "./voiceStore";
 import {
   api,
   ApiError,
@@ -25,11 +26,17 @@ export interface AuthState {
   checkAuth: () => Promise<void>;
   clearError: () => void;
   setToken: (token: string) => void;
+  updateUser: (user: Partial<User>) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => {
   // Register unauthorized callback so API client 401 failures trigger UI logout
   setUnauthorizedCallback(() => {
+    try {
+      useVoiceStore.getState().leaveVoiceChannel();
+    } catch (err) {
+      console.warn("[authStore] Failed to leave voice channel on unauthorized:", err);
+    }
     set({
       user: null,
       token: null,
@@ -88,6 +95,11 @@ export const useAuthStore = create<AuthState>((set) => {
     },
 
     logout: () => {
+      try {
+        useVoiceStore.getState().leaveVoiceChannel();
+      } catch (err) {
+        console.warn("[authStore] Failed to leave voice channel on logout:", err);
+      }
       clearTokens();
       set({
         user: null,
@@ -140,6 +152,12 @@ export const useAuthStore = create<AuthState>((set) => {
     setToken: (token: string) => {
       setTokens(token);
       set({ token });
+    },
+
+    updateUser: (updatedFields: Partial<User>) => {
+      set((state) => ({
+        user: state.user ? { ...state.user, ...updatedFields } : null,
+      }));
     },
   };
 });

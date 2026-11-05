@@ -1,7 +1,7 @@
 import React from "react";
 import { useVoiceStore } from "../../stores/voiceStore";
 import { useGuildStore } from "../../stores/guildStore";
-import { PhoneOff, Wifi, AlertCircle, MonitorUp, MonitorOff } from "lucide-react";
+import { PhoneOff, Wifi, AlertCircle, MonitorUp, MonitorOff, MicOff } from "lucide-react";
 
 export const VoiceControls: React.FC = () => {
   const {
@@ -12,6 +12,9 @@ export const VoiceControls: React.FC = () => {
     isScreenSharing,
     toggleScreenShare,
     error,
+    micPermissionBlocked,
+    repairMicPermissions,
+    openWindowsMicSettings,
   } = useVoiceStore();
   const guilds = useGuildStore((s) => s.guilds);
 
@@ -96,6 +99,29 @@ export const VoiceControls: React.FC = () => {
       {isError && error && (
         <div className="mt-1 text-[10px] text-[#f23f43] truncate" title={error}>
           {error}
+        </div>
+      )}
+
+      {micPermissionBlocked && (
+        <div className="mt-2 bg-[#f23f43]/15 border border-[#f23f43]/40 rounded p-2 flex items-center justify-between gap-2 text-xs text-[#f23f43] animate-in fade-in-50">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <MicOff className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate font-medium">Microfone bloqueado</span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={async () => {
+                const ok = await repairMicPermissions();
+                if (!ok) {
+                  openWindowsMicSettings();
+                }
+              }}
+              className="bg-[#f23f43] hover:bg-[#d83a3e] text-white text-[11px] font-semibold px-2 py-0.5 rounded transition cursor-pointer"
+            >
+              Desbloquear
+            </button>
+          </div>
         </div>
       )}
     </div>

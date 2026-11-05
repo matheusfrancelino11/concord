@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
+import * as ContextMenu from "@radix-ui/react-context-menu";
 import { Message } from "../../types";
-import { Pencil, Trash2, Check, X, Reply, Copy, Smile, CornerDownRight } from "lucide-react";
+import { useProfileModalStore } from "../../stores/profileModalStore";
+import { Pencil, Trash2, Check, X, Reply, Copy, Smile, CornerDownRight, User as UserIcon } from "lucide-react";
 
 interface MessageItemProps {
   message: Message;
@@ -86,6 +88,16 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     message.author?.global_name || message.author?.username || "Usuário desconhecido";
   const initial = authorName.charAt(0).toUpperCase() || "?";
   const avatarBg = getAvatarColor(message.author?.id || authorName);
+  const openProfile = useProfileModalStore((s) => s.openProfile);
+
+  const handleOpenAuthorProfile = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (message.author) {
+      openProfile(message.author, {
+        nick: message.author.global_name,
+      });
+    }
+  };
 
   useEffect(() => {
     if (isEditing) {
@@ -181,48 +193,56 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   };
 
   return (
-    <div className="group relative flex flex-col px-4 py-1.5 hover:bg-[#2e3035]/60 rounded transition-colors select-text">
-      {/* 0. Quoted Reply Header if this message is a reply */}
-      {message.reply_to_id && (
-        <div className="flex items-center gap-2 text-xs text-[#949ba4] mb-1 pl-7 relative select-none">
-          <CornerDownRight className="w-3.5 h-3.5 text-[#949ba4] shrink-0" />
-          <span className="font-semibold text-[#dbdee1]">
-            @{replyMessage?.author?.global_name || replyMessage?.author?.username || "usuário"}
-          </span>
-          <span className="truncate max-w-md text-[#949ba4] italic">
-            {replyMessage ? replyMessage.content : "Mensagem original"}
-          </span>
-        </div>
-      )}
-
-      <div className="flex items-start gap-4">
-        {/* 1. Author Avatar */}
-        <div className="shrink-0 mt-0.5">
-          {message.author?.avatar ? (
-            <img
-              src={message.author.avatar}
-              alt={authorName}
-              className="w-10 h-10 rounded-full object-cover"
-            />
-          ) : (
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-base ${avatarBg}`}
-            >
-              {initial}
+    <ContextMenu.Root>
+      <ContextMenu.Trigger asChild>
+        <div className="group relative flex flex-col px-4 py-1.5 hover:bg-[#2e3035]/60 rounded transition-colors select-text">
+          {/* 0. Quoted Reply Header if this message is a reply */}
+          {message.reply_to_id && (
+            <div className="flex items-center gap-2 text-xs text-[#949ba4] mb-1 pl-7 relative select-none">
+              <CornerDownRight className="w-3.5 h-3.5 text-[#949ba4] shrink-0" />
+              <span className="font-semibold text-[#dbdee1]">
+                @{replyMessage?.author?.global_name || replyMessage?.author?.username || "usuário"}
+              </span>
+              <span className="truncate max-w-md text-[#949ba4] italic">
+                {replyMessage ? replyMessage.content : "Mensagem original"}
+              </span>
             </div>
           )}
-        </div>
 
-        {/* 2. Message Body */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2">
-            <span className="font-semibold text-[15px] text-[#f2f3f5] hover:underline cursor-pointer">
-              {authorName}
-            </span>
-            <span className="text-[11px] text-[#949ba4] font-medium select-none">
-              {formatTimestamp(message.created_at)}
-            </span>
-          </div>
+          <div className="flex items-start gap-4">
+            {/* 1. Author Avatar */}
+            <div
+              onClick={handleOpenAuthorProfile}
+              className="shrink-0 mt-0.5 cursor-pointer hover:opacity-85 transition"
+            >
+              {message.author?.avatar ? (
+                <img
+                  src={message.author.avatar}
+                  alt={authorName}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-base ${avatarBg}`}
+                >
+                  {initial}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Message Body */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2">
+                <span
+                  onClick={handleOpenAuthorProfile}
+                  className="font-semibold text-[15px] text-[#f2f3f5] hover:underline cursor-pointer"
+                >
+                  {authorName}
+                </span>
+                <span className="text-[11px] text-[#949ba4] font-medium select-none">
+                  {formatTimestamp(message.created_at)}
+                </span>
+              </div>
 
           {/* Content or Edit Mode */}
           {isEditing ? (
@@ -410,5 +430,73 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         </div>
       )}
     </div>
+  </ContextMenu.Trigger>
+
+  <ContextMenu.Portal>
+    <ContextMenu.Content className="w-56 bg-[#111214] border border-[#2b2d31] p-1.5 rounded-md shadow-xl text-sm font-medium z-50 text-[#dbdee1] animate-in fade-in-0 zoom-in-95">
+      {onReply && (
+        <ContextMenu.Item
+          onClick={() => onReply(message)}
+          className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+        >
+          <span>Responder</span>
+          <Reply className="w-3.5 h-3.5" />
+        </ContextMenu.Item>
+      )}
+
+      <ContextMenu.Item
+        onClick={handleCopyText}
+        className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+      >
+        <span>Copiar Texto</span>
+        <Copy className="w-3.5 h-3.5" />
+      </ContextMenu.Item>
+
+      {isAuthor && (
+        <ContextMenu.Item
+          onClick={() => setIsEditing(true)}
+          className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+        >
+          <span>Editar Mensagem</span>
+          <Pencil className="w-3.5 h-3.5" />
+        </ContextMenu.Item>
+      )}
+
+      {message.author && (
+        <ContextMenu.Item
+          onClick={() => handleOpenAuthorProfile()}
+          className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+        >
+          <span>Ver Perfil</span>
+          <UserIcon className="w-3.5 h-3.5" />
+        </ContextMenu.Item>
+      )}
+
+      {canDelete && (
+        <>
+          <ContextMenu.Separator className="h-[1px] bg-[#2b2d31] my-1" />
+          <ContextMenu.Item
+            onClick={handleDelete}
+            className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs text-[#f23f43] hover:bg-[#f23f43] hover:text-white cursor-pointer transition-colors outline-none"
+          >
+            <span>Excluir Mensagem</span>
+            <Trash2 className="w-3.5 h-3.5" />
+          </ContextMenu.Item>
+        </>
+      )}
+
+      <ContextMenu.Separator className="h-[1px] bg-[#2b2d31] my-1" />
+      <ContextMenu.Item
+        onClick={() => {
+          navigator.clipboard.writeText(message.id);
+        }}
+        className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs text-[#949ba4] hover:bg-[#35373c] hover:text-white cursor-pointer transition-colors outline-none"
+      >
+        <span>Copiar ID</span>
+        <Copy className="w-3 h-3" />
+      </ContextMenu.Item>
+    </ContextMenu.Content>
+  </ContextMenu.Portal>
+</ContextMenu.Root>
   );
 };

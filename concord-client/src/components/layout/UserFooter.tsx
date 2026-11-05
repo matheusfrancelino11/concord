@@ -3,9 +3,10 @@ import { useAuthStore } from "../../stores/authStore";
 import { usePresenceStore } from "../../stores/presenceStore";
 import { useVoiceStore } from "../../stores/voiceStore";
 import { UserStatus } from "../../types";
-import { Mic, MicOff, Headphones, LogOut, Check, Settings as SettingsIcon } from "lucide-react";
+import { Mic, MicOff, Headphones, Check, Settings as SettingsIcon, User as UserIcon } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { UserSettingsModal } from "../modals/UserSettingsModal";
+import { useProfileModalStore } from "../../stores/profileModalStore";
 
 const STATUS_CONFIG: Record<
   UserStatus,
@@ -19,7 +20,7 @@ const STATUS_CONFIG: Record<
 };
 
 export const UserFooter: React.FC = () => {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const { myStatus, updateMyStatus } = usePresenceStore();
   const { isMuted, isDeafened, toggleMute, toggleDeafen } = useVoiceStore();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -64,6 +65,20 @@ export const UserFooter: React.FC = () => {
             sideOffset={8}
             className="w-56 bg-[#111214] border border-[#2b2d31] p-1.5 rounded-md shadow-2xl text-xs font-medium z-50 text-[#dbdee1] animate-in fade-in-0 zoom-in-95"
           >
+            <DropdownMenu.Item
+              onClick={() => {
+                if (user) {
+                  useProfileModalStore.getState().openProfile(user);
+                }
+              }}
+              className="flex items-center justify-between px-2.5 py-2 rounded text-[#dbdee1] hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none font-semibold mb-1"
+            >
+              <span>Ver / Editar Perfil</span>
+              <UserIcon className="w-3.5 h-3.5" />
+            </DropdownMenu.Item>
+
+            <DropdownMenu.Separator className="h-[1px] bg-[#2b2d31] my-1" />
+
             <div className="px-2 py-1.5 font-bold text-[10px] text-[#949ba4] uppercase tracking-wider">
               Definir Status
             </div>
@@ -130,16 +145,6 @@ export const UserFooter: React.FC = () => {
           className="p-1.5 hover:bg-[#35373c] hover:text-white rounded transition cursor-pointer"
         >
           <SettingsIcon className="w-4 h-4" />
-        </button>
-
-        <button
-          type="button"
-          onClick={logout}
-          title="Sair"
-          aria-label="Sair"
-          className="p-1.5 hover:bg-[#35373c] hover:text-[#f23f43] rounded transition cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" />
         </button>
       </div>
 

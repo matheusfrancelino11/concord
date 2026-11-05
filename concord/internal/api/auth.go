@@ -115,3 +115,36 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	WriteJSON(w, http.StatusOK, models.MeResponse{User: *profile})
 }
+
+// UpdateUserRequest represents the payload for PATCH /auth/me or PATCH /users/@me
+type UpdateUserRequest struct {
+	Avatar     *string `json:"avatar"`
+	GlobalName *string `json:"global_name"`
+}
+
+// UpdateMe handles PATCH /auth/me or PATCH /users/@me
+func (h *AuthHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
+	userID, err := middleware.GetUserID(r.Context())
+	if err != nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing authentication context")
+		return
+	}
+
+	var req UpdateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, "MALFORMED_JSON", "Invalid JSON payload")
+		return
+	}
+
+	profile, err := h.authService.UpdateCurrentUser(r.Context(), userID, req.Avatar, req.GlobalName)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			WriteError(w, http.StatusNotFound, "USER_NOT_FOUND", "User profile not found")
+			return
+		}
+		WriteError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Failed to update user profile")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, models.MeResponse{User: *profile})
+}

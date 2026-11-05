@@ -39,6 +39,7 @@ services:
       CORS_ORIGINS: "*"
     volumes:
       - concord_uploads:/app/uploads
+      - /home/ubuntu/updates:/app/updates
     networks:
       - concord_net
 

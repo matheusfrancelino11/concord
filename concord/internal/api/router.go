@@ -59,6 +59,14 @@ func NewRouter(deps *RouterDeps) http.Handler {
 	v1FileServer := http.StripPrefix("/v1/uploads/", http.FileServer(http.Dir(uploadsDir)))
 	r.Get("/v1/uploads/*", v1FileServer.ServeHTTP)
 
+	// Mount static updates directory for Tauri auto-updater
+	updatesDir := filepath.Join(workDir, "updates")
+	_ = os.MkdirAll(updatesDir, 0755)
+	updateServer := http.StripPrefix("/updates/", http.FileServer(http.Dir(updatesDir)))
+	r.Get("/updates/*", updateServer.ServeHTTP)
+	v1UpdateServer := http.StripPrefix("/v1/updates/", http.FileServer(http.Dir(updatesDir)))
+	r.Get("/v1/updates/*", v1UpdateServer.ServeHTTP)
+
 	// Health check handler
 	healthHandler := func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -94,6 +102,8 @@ func NewRouter(deps *RouterDeps) http.Handler {
 
 			// Current user profile
 			pr.Get("/auth/me", deps.AuthHandler.Me)
+			pr.Patch("/auth/me", deps.AuthHandler.UpdateMe)
+			pr.Patch("/users/@me", deps.AuthHandler.UpdateMe)
 
 			// Guild routes
 			pr.Post("/guilds", deps.GuildHandler.CreateGuild)

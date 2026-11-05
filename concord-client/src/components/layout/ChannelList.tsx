@@ -7,6 +7,7 @@ import { useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
 import { useDMStore } from "../../stores/dmStore";
 import { usePresenceStore } from "../../stores/presenceStore";
 import { useRelationshipStore } from "../../stores/relationshipStore";
+import { useProfileModalStore } from "../../stores/profileModalStore";
 import { RelationshipType } from "../../types";
 import { Hash, Volume2, Plus, ChevronDown, Trash2, UserPlus, Mic, MicOff, Headphones, Tv, Settings, X, MessageSquare, Users } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -39,8 +40,11 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   const activeVoiceChannelId = useVoiceStore((s) => s.activeVoiceChannelId);
   const joinVoiceChannel = useVoiceStore((s) => s.joinVoiceChannel);
   const leaveVoiceChannel = useVoiceStore((s) => s.leaveVoiceChannel);
-  const isUserSpeaking = useVoiceStore((s) => s.isUserSpeaking);
+  const speakingUserIds = useVoiceStore((s) => s.speakingUserIds);
+  const isMuted = useVoiceStore((s) => s.isMuted);
+  const isDeafened = useVoiceStore((s) => s.isDeafened);
 
+  const openProfile = useProfileModalStore((s) => s.openProfile);
   const currentGuildId = selectedGuildId || activeGuildId;
   const currentChannelId = selectedChannelId || activeChannelId;
 
@@ -412,9 +416,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                   const handleVoiceClick = () => {
                     selectChannel(channel.id);
                     if (!currentGuildId) return;
-                    if (isInThisVoice) {
-                      leaveVoiceChannel();
-                    } else {
+                    // If not already connected to this channel, join it.
+                    // If already connected, simply select/focus the view without disconnecting!
+                    if (!isInThisVoice) {
                       joinVoiceChannel(currentGuildId, channel.id, channel.name);
                     }
                   };
@@ -469,11 +473,23 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                               vsUser?.global_name ||
                               vsUser?.username ||
                               "Usuário";
-                            const speaking = isUserSpeaking(vs.user_id);
+                            const isSelf = user && vs.user_id === user.id;
+                            const isMutedEffective = isSelf ? isMuted : vs.self_mute;
+                            const isDeafEffective = isSelf ? isDeafened : vs.self_deaf;
+                            const speaking = speakingUserIds.includes(vs.user_id);
                             return (
                               <div
                                 key={vs.user_id}
-                                className="flex items-center gap-2 py-0.5 text-xs text-[#dbdee1]"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (vsUser) {
+                                    openProfile(vsUser, {
+                                      nick: vs.member?.nick,
+                                      inVoice: true,
+                                    });
+                                  }
+                                }}
+                                className="flex items-center gap-2 py-1 px-1.5 rounded hover:bg-[#35373c]/60 text-xs text-[#dbdee1] cursor-pointer transition-colors group/vm"
                               >
                                 <div
                                   className={`w-5 h-5 rounded-full bg-[#5865F2] flex items-center justify-center text-[10px] font-bold text-white shrink-0 overflow-hidden transition-all duration-150 ${
@@ -500,9 +516,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                                   </span>
                                 )}
                                 <div className="ml-auto shrink-0 flex items-center">
-                                  {vs.self_deaf ? (
+                                  {isDeafEffective ? (
                                     <Headphones className="w-3 h-3 text-[#f23f43]" />
-                                  ) : vs.self_mute ? (
+                                  ) : isMutedEffective ? (
                                     <MicOff className="w-3 h-3 text-[#f23f43]" />
                                   ) : speaking ? (
                                     <Mic className="w-3 h-3 text-[#23a55a]" />

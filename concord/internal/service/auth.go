@@ -57,6 +57,7 @@ type AuthService interface {
 	Login(ctx context.Context, req *models.LoginRequest) (*models.AuthResponse, error)
 	RefreshToken(ctx context.Context, req *models.RefreshRequest) (*models.TokenResponse, error)
 	GetCurrentUser(ctx context.Context, userID snowflake.ID) (*models.UserResponse, error)
+	UpdateCurrentUser(ctx context.Context, userID snowflake.ID, avatar *string, globalName *string) (*models.UserResponse, error)
 	ValidateToken(tokenStr string, expectedType string) (*Claims, error)
 }
 
@@ -272,6 +273,34 @@ func (s *authService) GetCurrentUser(ctx context.Context, userID snowflake.ID) (
 			return nil, ErrUserNotFound
 		}
 		return nil, fmt.Errorf("get user profile: %w", err)
+	}
+
+	return &user, nil
+}
+
+func (s *authService) UpdateCurrentUser(ctx context.Context, userID snowflake.ID, avatar *string, globalName *string) (*models.UserResponse, error) {
+	query := `
+		UPDATE users
+		SET avatar = COALESCE($1, avatar),
+		    global_name = COALESCE($2, global_name)
+		WHERE id = $3
+		RETURNING id, username, email, global_name, avatar, flags, created_at
+	`
+	var user models.UserResponse
+	err := s.db.QueryRow(ctx, query, avatar, globalName, userID).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.GlobalName,
+		&user.Avatar,
+		&user.Flags,
+		&user.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("update user profile: %w", err)
 	}
 
 	return &user, nil

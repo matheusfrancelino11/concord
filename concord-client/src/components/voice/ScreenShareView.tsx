@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ActiveScreenShare, useVoiceStore } from "../../stores/voiceStore";
 import { useSettingsStore } from "../../stores/settingsStore";
-import { Maximize2, Minimize2, MonitorOff, Tv, Radio, Volume2, VolumeX } from "lucide-react";
+import { Maximize2, Minimize2, MonitorOff, Tv, Radio, Volume2, VolumeX, EyeOff } from "lucide-react";
 
 interface ScreenShareViewProps {
   screenShare: ActiveScreenShare;
   channelName?: string;
   onMinimize?: () => void;
+  onStopWatching?: () => void;
 }
 
 export const ScreenShareView: React.FC<ScreenShareViewProps> = ({
   screenShare,
   channelName,
   onMinimize,
+  onStopWatching,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -109,6 +111,19 @@ export const ScreenShareView: React.FC<ScreenShareViewProps> = ({
             >
               <MonitorOff className="w-3.5 h-3.5" />
               <span>Parar Transmissão</span>
+            </button>
+          )}
+
+          {/* Remote viewers: Stop Watching Screen Share button */}
+          {!screenShare.isLocal && (
+            <button
+              type="button"
+              onClick={onStopWatching || onMinimize}
+              title="Parar de assistir à transmissão"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#35373c] hover:bg-[#da373b] hover:text-white text-[#dbdee1] text-xs font-semibold transition cursor-pointer shadow-md mr-1"
+            >
+              <EyeOff className="w-3.5 h-3.5" />
+              <span>Parar de Assistir</span>
             </button>
           )}
 

@@ -290,6 +290,14 @@ export const api = {
       });
       return res.user;
     },
+
+    updateMe: async (payload: { avatar?: string; global_name?: string }): Promise<User> => {
+      const res = await request<MeResponse>("/users/@me", {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+      return res.user;
+    },
   },
 
   guilds: {

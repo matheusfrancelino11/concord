@@ -40,6 +40,12 @@ func main() {
 	}
 	log.Println("[concord] Database migrations completed successfully.")
 
+	// No gateway session survives a server restart, so any voice state left in
+	// the table is stale and would show up as a ghost participant.
+	if _, err := pool.Exec(ctx, `DELETE FROM voice_states`); err != nil {
+		log.Printf("[concord] Warning: failed to purge stale voice states: %v", err)
+	}
+
 	sf, err := snowflake.New(cfg.WorkerID, cfg.ProcessID)
 	if err != nil {
 		log.Fatalf("[concord] Fatal Snowflake initialization error: %v", err)

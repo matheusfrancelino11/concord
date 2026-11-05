@@ -16,7 +16,9 @@ import {
   Play,
   Square,
   AlertTriangle,
+  LogOut,
 } from "lucide-react";
+import { LogoutConfirmModal } from "./LogoutConfirmModal";
 
 interface UserSettingsModalProps {
   open: boolean;
@@ -28,6 +30,7 @@ type TabType = "voice" | "screenshare" | "appearance" | "notifications";
 export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ open, onOpenChange }) => {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>("voice");
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   // Settings store
   const {
@@ -77,7 +80,17 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ open, onOp
     setStartWithWindows,
   } = useSettingsStore();
 
-  const { switchInputDevice, switchOutputDevice } = useVoiceStore();
+  const {
+    switchInputDevice,
+    switchOutputDevice,
+    micPermissionBlocked,
+    setMicPermissionBlocked,
+    repairMicPermissions,
+    openWindowsMicSettings,
+    restartApp,
+  } = useVoiceStore();
+
+  const [repairStatus, setRepairStatus] = useState<string | null>(null);
 
   // Audio devices list
   const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
@@ -133,12 +146,23 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ open, onOp
   // Handle microphone testing
   const startMicTest = async () => {
     try {
+      let stream: MediaStream;
       const constraints: MediaStreamConstraints = {
-        audio: inputDeviceId && inputDeviceId !== "default"
-          ? { deviceId: { exact: inputDeviceId }, echoCancellation, noiseSuppression, autoGainControl }
-          : { echoCancellation, noiseSuppression, autoGainControl },
+        audio:
+          inputDeviceId && inputDeviceId !== "default"
+            ? { deviceId: { exact: inputDeviceId }, echoCancellation, noiseSuppression, autoGainControl }
+            : { echoCancellation, noiseSuppression, autoGainControl },
       };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (firstErr) {
+        console.warn("[UserSettings] First getUserMedia attempt failed, falling back to simple audio:", firstErr);
+        // Fallback to simple audio: true in case specific device or audio processing constraints failed
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+
+      setMicPermissionBlocked(false);
       micStreamRef.current = stream;
 
       const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -169,7 +193,21 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ open, onOp
       updateMeter();
     } catch (err) {
       console.error("[UserSettings] Error starting mic test:", err);
-      alert("Não foi possível acessar o microfone para teste.");
+      const errDetail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      const isPerm =
+        err instanceof Error &&
+        (err.name === "NotAllowedError" ||
+          err.name === "PermissionDeniedError" ||
+          err.message.includes("Permission denied") ||
+          err.message.includes("permission"));
+      if (isPerm) {
+        setMicPermissionBlocked(true);
+        alert(
+          `O acesso ao microfone foi bloqueado pelo aplicativo ou Windows.\n\nDetalhes: ${errDetail}\n\nClique no botão "Redefinir Permissões" logo abaixo para desbloquear e reiniciar!`
+        );
+      } else {
+        alert(`Não foi possível acessar o microfone para teste.\n\nDetalhes do erro: ${errDetail}`);
+      }
     }
   };
 
@@ -264,7 +302,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ open, onOp
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 animate-in fade-in-0" />
         <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] max-w-[95vw] h-[640px] max-h-[92vh] bg-[#313338] text-[#dbdee1] rounded-lg shadow-2xl flex overflow-hidden z-50 border border-[#232428] outline-none">
@@ -331,22 +370,36 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ open, onOp
               </div>
             </div>
 
-            {/* User Profile Mini Footer */}
-            <div className="pt-4 border-t border-[#1f2023]/60 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center font-bold text-white text-xs shrink-0">
-                {user?.avatar ? (
-                  <img src={user.avatar} alt={user.username} className="w-full h-full rounded-full object-cover" />
-                ) : (
-                  (user?.global_name || user?.username || "?").charAt(0).toUpperCase()
-                )}
+            <div className="space-y-3">
+              {/* Logout Button */}
+              <div className="pt-2 border-t border-[#1f2023]/60">
+                <button
+                  type="button"
+                  onClick={() => setIsLogoutConfirmOpen(true)}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-[#f23f43] hover:bg-[#f23f43]/10 hover:text-[#f23f43] transition cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sair da Conta</span>
+                </button>
               </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-semibold text-white truncate">
-                  {user?.global_name || user?.username}
-                </span>
-                <span className="text-[10px] text-[#949ba4] truncate">
-                  @{user?.username}
-                </span>
+
+              {/* User Profile Mini Footer */}
+              <div className="pt-3 border-t border-[#1f2023]/60 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center font-bold text-white text-xs shrink-0">
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user.username} className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    (user?.global_name || user?.username || "?").charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-semibold text-white truncate">
+                    {user?.global_name || user?.username}
+                  </span>
+                  <span className="text-[10px] text-[#949ba4] truncate">
+                    @{user?.username}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -500,6 +553,84 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ open, onOp
                         style={{ width: `${isTestingMic ? micLevel : 0}%` }}
                       />
                     </div>
+                  </div>
+
+                  {/* Microphone Permissions & Troubleshooting Card */}
+                  <div className="p-4 rounded-lg bg-[#2b2d31] border border-[#1f2023]/60 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-bold text-white flex items-center gap-2">
+                          <span>Permissões e Acesso ao Microfone</span>
+                          {micPermissionBlocked ? (
+                            <span className="text-[10px] bg-[#f23f43]/20 text-[#f23f43] px-2 py-0.5 rounded font-semibold border border-[#f23f43]/40">
+                              Bloqueado
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-[#23a55a]/20 text-[#23a55a] px-2 py-0.5 rounded font-semibold border border-[#23a55a]/40">
+                              Permitido
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-[#949ba4] mt-0.5">
+                          Se você negou o acesso sem querer ou o microfone parou de funcionar, redefina as permissões aqui.
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setRepairStatus("Redefinindo...");
+                            const success = await repairMicPermissions();
+                            if (success) {
+                              setRepairStatus("Permissões concedidas! Testando microfone...");
+                              try {
+                                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                                s.getTracks().forEach((t) => t.stop());
+                                setRepairStatus("Sucesso! Microfone liberado e funcionando.");
+                                setTimeout(() => setRepairStatus(null), 5000);
+                              } catch {
+                                setRepairStatus("Necessário reiniciar o app para aplicar.");
+                              }
+                            } else {
+                              const wantRestart = confirm(
+                                "Para que o Windows e o navegador apliquem o desbloqueio do microfone, é recomendado reiniciar o Concord completamente.\n\nDeseja reiniciar o Concord agora?"
+                              );
+                              if (wantRestart) {
+                                await restartApp();
+                              }
+                            }
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#23a55a] hover:bg-[#1f9250] text-white text-xs font-semibold transition cursor-pointer shadow-sm"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Redefinir Permissões</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await restartApp();
+                          }}
+                          title="Reinicia o Concord para recarregar o sistema de áudio"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#4e5058] hover:bg-[#6d6f78] text-white text-xs font-medium transition cursor-pointer"
+                        >
+                          <span>Reiniciar App</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openWindowsMicSettings()}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#35373c] hover:bg-[#404249] text-white text-xs font-medium transition cursor-pointer"
+                        >
+                          <span>Ajustes do Windows</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {repairStatus && (
+                      <div className="text-xs text-[#23a55a] bg-[#23a55a]/10 border border-[#23a55a]/30 p-2 rounded flex items-center gap-2">
+                        <Check className="w-4 h-4 shrink-0" />
+                        <span>{repairStatus}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Input Mode (VAD vs Push-to-Talk) */}
@@ -912,5 +1043,12 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ open, onOp
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+
+    <LogoutConfirmModal
+      open={isLogoutConfirmOpen}
+      onOpenChange={setIsLogoutConfirmOpen}
+      onConfirmed={() => onOpenChange(false)}
+    />
+  </>
   );
 };

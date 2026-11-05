@@ -22,6 +22,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { UserProfileModal } from "../modals/UserProfileModal";
+import { useProfileModalStore } from "../../stores/profileModalStore";
 
 interface MemberListProps {
   guildId: string;
@@ -84,6 +85,7 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
   const rawVoiceStates = useVoiceStore((s) => s.voiceStatesByGuild[guildId]);
   const voiceStates = rawVoiceStates || EMPTY_VOICE_STATES;
   const syncUserAudio = useVoiceStore((s) => s.syncUserAudio);
+  const speakingUserIds = useVoiceStore((s) => s.speakingUserIds);
 
   const userVolumes = useSettingsStore((s) => s.userVolumes);
   const localMutedUsers = useSettingsStore((s) => s.localMutedUsers);
@@ -189,14 +191,35 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
     const isGuildOwner = isOwner(member.user_id);
     const isSelf = member.user_id === currentUser?.id;
     const roleColor = getMemberColor(member.roles);
+    const speaking = speakingUserIds.includes(member.user_id);
+
+    const memberRoles = roles.filter((r: Role) => (member.roles || []).includes(r.id));
+    const openProfile = useProfileModalStore.getState().openProfile;
+
+    const handleOpenProfile = () => {
+      if (user) {
+        openProfile(user, {
+          nick: member.nick,
+          joinedAt: member.joined_at,
+          roles: memberRoles,
+        });
+      }
+    };
 
     return (
       <ContextMenu.Root key={member.user_id}>
         <ContextMenu.Trigger asChild>
-          <div className="group flex items-center gap-3 px-2 py-1.5 rounded-[4px] hover:bg-[#35373c]/60 cursor-pointer transition-colors">
+          <div
+            onClick={handleOpenProfile}
+            className="group flex items-center gap-3 px-2 py-1.5 rounded-[4px] hover:bg-[#35373c]/60 cursor-pointer transition-colors"
+          >
             {/* Avatar with status indicator */}
             <div className="relative shrink-0">
-              <div className="w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center text-xs font-semibold text-white overflow-hidden">
+              <div
+                className={`w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center text-xs font-semibold text-white overflow-hidden transition-all duration-150 ${
+                  speaking ? "ring-2 ring-[#23a55a] shadow-[0_0_8px_#23a55a]" : ""
+                }`}
+              >
                 {user?.avatar ? (
                   <img
                     src={user.avatar}
@@ -262,7 +285,7 @@ export const MemberList: React.FC<MemberListProps> = ({ guildId }) => {
 
             {/* Profile Action */}
             <ContextMenu.Item
-              onClick={() => setProfileMember(member)}
+              onClick={handleOpenProfile}
               className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
             >
               <span>Ver Perfil</span>

@@ -1,11 +1,16 @@
 import React, { useEffect, useRef } from "react";
+import * as ContextMenu from "@radix-ui/react-context-menu";
 import { Channel, VoiceState } from "../../types";
 import { ActiveScreenShare, useVoiceStore, EMPTY_VOICE_STATES } from "../../stores/voiceStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useGuildStore } from "../../stores/guildStore";
+import { useProfileModalStore } from "../../stores/profileModalStore";
+import { useSettingsStore } from "../../stores/settingsStore";
+import { useDMStore } from "../../stores/dmStore";
 import { ScreenShareView } from "./ScreenShareView";
 import {
   Volume2,
+  VolumeX,
   Mic,
   MicOff,
   Headphones,
@@ -15,11 +20,167 @@ import {
   MonitorUp,
   MonitorOff,
   Tv,
+  User as UserIcon,
+  MessageSquare,
+  Copy,
+  EyeOff,
 } from "lucide-react";
 
 interface VoiceChannelViewProps {
   channel: Channel;
 }
+
+const VoiceParticipantMenu: React.FC<{
+  vs: VoiceState;
+  children: React.ReactNode;
+  className?: string;
+}> = ({ vs, children, className }) => {
+  const currentUser = useAuthStore((s) => s.user);
+  const openProfile = useProfileModalStore((s) => s.openProfile);
+  const openDM = useDMStore((s) => s.openDM);
+  const selectGuild = useGuildStore((s) => s.selectGuild);
+  const syncUserAudio = useVoiceStore((s) => s.syncUserAudio);
+
+  const userVolumes = useSettingsStore((s) => s.userVolumes);
+  const localMutedUsers = useSettingsStore((s) => s.localMutedUsers);
+  const setUserVolume = useSettingsStore((s) => s.setUserVolume);
+  const toggleLocalMute = useSettingsStore((s) => s.toggleLocalMute);
+
+  const vsUser = vs.member?.user;
+  const vsName =
+    vs.member?.nick ||
+    vsUser?.global_name ||
+    vsUser?.username ||
+    "Usuário";
+  const isSelf = currentUser && vs.user_id === currentUser.id;
+
+  const handleOpenProfile = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (vsUser) {
+      openProfile(vsUser, {
+        nick: vs.member?.nick,
+        joinedAt: vs.member?.joined_at,
+        inVoice: true,
+      });
+    }
+  };
+
+  return (
+    <ContextMenu.Root>
+      <ContextMenu.Trigger asChild>
+        <div onClick={handleOpenProfile} className={className}>
+          {children}
+        </div>
+      </ContextMenu.Trigger>
+
+      <ContextMenu.Portal>
+        <ContextMenu.Content className="w-56 bg-[#111214] border border-[#2b2d31] p-1.5 rounded-md shadow-xl text-sm font-medium z-50 text-[#dbdee1] animate-in fade-in-0 zoom-in-95">
+          <div className="px-2 py-1 text-xs font-bold text-[#949ba4] uppercase truncate">
+            {vsName}
+          </div>
+          <ContextMenu.Separator className="h-[1px] bg-[#2b2d31] my-1" />
+
+          {/* Profile Action */}
+          <ContextMenu.Item
+            onClick={handleOpenProfile}
+            className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+          >
+            <span>Ver Perfil</span>
+            <UserIcon className="w-3.5 h-3.5" />
+          </ContextMenu.Item>
+
+          {/* Direct Message Action */}
+          {!isSelf && (
+            <ContextMenu.Item
+              onClick={async () => {
+                try {
+                  await openDM(vs.user_id);
+                  selectGuild("");
+                } catch (err) {
+                  console.error("Failed to open DM:", err);
+                }
+              }}
+              className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+            >
+              <span>Enviar Mensagem Direta</span>
+              <MessageSquare className="w-3.5 h-3.5" />
+            </ContextMenu.Item>
+          )}
+
+          {/* Copy ID Action */}
+          <ContextMenu.Item
+            onClick={() => {
+              navigator.clipboard.writeText(vs.user_id);
+            }}
+            className="flex items-center justify-between px-2.5 py-1.5 rounded text-xs hover:bg-[#5865F2] hover:text-white cursor-pointer transition-colors outline-none"
+          >
+            <span>Copiar ID</span>
+            <Copy className="w-3.5 h-3.5" />
+          </ContextMenu.Item>
+
+          {/* Individual Audio Controls (if not self) */}
+          {!isSelf && (
+            <>
+              <ContextMenu.Separator className="h-[1px] bg-[#2b2d31] my-1" />
+
+              {/* Local Volume Slider 0% - 200% */}
+              <div className="px-2.5 py-2 space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 text-[#dbdee1] font-medium">
+                    <Volume2 className="w-3.5 h-3.5 text-[#949ba4]" />
+                    Volume do Usuário
+                  </span>
+                  <span className="text-white font-bold text-[11px]">
+                    {userVolumes[vs.user_id] !== undefined
+                      ? userVolumes[vs.user_id]
+                      : 100}
+                    %
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="200"
+                  value={
+                    userVolumes[vs.user_id] !== undefined
+                      ? userVolumes[vs.user_id]
+                      : 100
+                  }
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setUserVolume(vs.user_id, val);
+                    syncUserAudio(vs.user_id);
+                  }}
+                  className="w-full accent-[#5865F2] cursor-pointer h-1.5"
+                />
+              </div>
+
+              {/* Local Mute Toggle */}
+              <ContextMenu.Item
+                onClick={() => {
+                  toggleLocalMute(vs.user_id);
+                  syncUserAudio(vs.user_id);
+                }}
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded text-xs cursor-pointer transition-colors outline-none ${
+                  localMutedUsers[vs.user_id]
+                    ? "text-[#f23f43] bg-[#f23f43]/10"
+                    : "hover:bg-[#5865F2] hover:text-white"
+                }`}
+              >
+                <span>
+                  {localMutedUsers[vs.user_id]
+                    ? "Desmutar localmente"
+                    : "Mutar localmente"}
+                </span>
+                <VolumeX className="w-3.5 h-3.5" />
+              </ContextMenu.Item>
+            </>
+          )}
+        </ContextMenu.Content>
+      </ContextMenu.Portal>
+    </ContextMenu.Root>
+  );
+};
 
 const StreamPreviewCard: React.FC<{
   share: ActiveScreenShare;
@@ -132,6 +293,19 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
         <div>
           {isConnectedToThisChannel ? (
             <div className="flex items-center gap-2">
+              {/* Stop Watching Remote Screen Share Button */}
+              {focusedShare && !focusedShare.isLocal && (
+                <button
+                  type="button"
+                  onClick={() => setFocusedScreenShareUserId(null)}
+                  title="Parar de assistir à transmissão"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-[#35373c] hover:bg-[#da373b] hover:text-white text-[#dbdee1] transition cursor-pointer"
+                >
+                  <EyeOff className="w-3.5 h-3.5" />
+                  <span>Parar de Assistir</span>
+                </button>
+              )}
+
               {/* Share Screen Button */}
               <button
                 type="button"
@@ -222,6 +396,7 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                 screenShare={focusedShare}
                 channelName={channel.name}
                 onMinimize={() => setFocusedScreenShareUserId(null)}
+                onStopWatching={() => setFocusedScreenShareUserId(null)}
               />
             </div>
 
@@ -254,17 +429,19 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                   vsUser?.global_name ||
                   vsUser?.username ||
                   "Usuário";
-                const isOwner = currentGuild && vs.user_id === currentGuild.owner_id;
                 const isSelf = user && vs.user_id === user.id;
+                const isMutedEffective = isSelf ? isMuted : vs.self_mute;
+                const isDeafEffective = isSelf ? isDeafened : vs.self_deaf;
                 const speaking = isUserSpeaking(vs.user_id);
 
                 return (
-                  <div
+                  <VoiceParticipantMenu
                     key={vs.user_id}
-                    className={`h-24 w-32 shrink-0 flex flex-col items-center justify-center rounded-lg bg-[#2b2d31] p-2 border transition-all duration-150 ${
+                    vs={vs}
+                    className={`h-24 w-32 shrink-0 flex flex-col items-center justify-center rounded-lg bg-[#2b2d31] p-2 border transition-all duration-150 cursor-pointer ${
                       speaking
                         ? "border-[#23a55a] shadow-[0_0_8px_rgba(35,165,90,0.35)]"
-                        : "border-[#383a40]/60"
+                        : "border-[#383a40]/60 hover:border-[#4e5058]"
                     }`}
                   >
                     <div className="relative mb-1">
@@ -284,9 +461,9 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                         )}
                       </div>
                       <div className="absolute -bottom-1 -right-1 flex items-center bg-[#111214] p-0.5 rounded-full border border-[#2b2d31]">
-                        {vs.self_deaf ? (
+                        {isDeafEffective ? (
                           <Headphones className="w-2.5 h-2.5 text-[#f23f43]" />
-                        ) : vs.self_mute ? (
+                        ) : isMutedEffective ? (
                           <MicOff className="w-2.5 h-2.5 text-[#f23f43]" />
                         ) : speaking ? (
                           <Mic className="w-2.5 h-2.5 text-[#23a55a]" />
@@ -299,7 +476,7 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                       {vsName}
                       {isSelf && " (Você)"}
                     </span>
-                  </div>
+                  </VoiceParticipantMenu>
                 );
               })}
             </div>
@@ -354,15 +531,18 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                     "User";
                   const isOwner = currentGuild && vs.user_id === currentGuild.owner_id;
                   const isSelf = user && vs.user_id === user.id;
+                  const isMutedEffective = isSelf ? isMuted : vs.self_mute;
+                  const isDeafEffective = isSelf ? isDeafened : vs.self_deaf;
                   const speaking = isUserSpeaking(vs.user_id);
                   const isUserStreaming =
                     vs.self_stream ||
                     activeScreenShares.some((s) => s.userId === vs.user_id);
 
                   return (
-                    <div
+                    <VoiceParticipantMenu
                       key={vs.user_id}
-                      className={`relative flex flex-col items-center justify-center p-6 rounded-xl bg-[#2b2d31] border transition-all duration-150 min-h-[170px] ${
+                      vs={vs}
+                      className={`relative flex flex-col items-center justify-center p-6 rounded-xl bg-[#2b2d31] border transition-all duration-150 min-h-[170px] cursor-pointer ${
                         speaking
                           ? "border-[#23a55a] shadow-[0_0_16px_rgba(35,165,90,0.35)]"
                           : "border-[#383a40]/60 hover:border-[#4e5058]"
@@ -371,8 +551,11 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                       {/* Streaming Badge */}
                       {isUserStreaming && (
                         <div
-                          onClick={() => setFocusedScreenShareUserId(vs.user_id)}
-                          className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#f23f43] hover:bg-[#da373b] text-white text-[10px] font-bold cursor-pointer transition shadow"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFocusedScreenShareUserId(vs.user_id);
+                          }}
+                          className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#f23f43] hover:bg-[#da373b] text-white text-[10px] font-bold cursor-pointer transition shadow z-10"
                           title="Assistir Transmissão"
                         >
                           <Tv className="w-3 h-3" />
@@ -402,9 +585,9 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
 
                         {/* Mute / Deafen status indicators */}
                         <div className="absolute -bottom-1 -right-1 flex items-center gap-1 bg-[#111214] p-1 rounded-full border border-[#2b2d31]">
-                          {vs.self_deaf ? (
+                          {isDeafEffective ? (
                             <Headphones className="w-3.5 h-3.5 text-[#f23f43]" />
-                          ) : vs.self_mute ? (
+                          ) : isMutedEffective ? (
                             <MicOff className="w-3.5 h-3.5 text-[#f23f43]" />
                           ) : speaking ? (
                             <Mic className="w-3.5 h-3.5 text-[#23a55a]" />
@@ -426,7 +609,7 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ channel }) =
                           </span>
                         )}
                       </div>
-                    </div>
+                    </VoiceParticipantMenu>
                   );
                 })}
               </div>
